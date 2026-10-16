@@ -31,6 +31,23 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// URL de tu Webhook en Make
+const WEBHOOK_URL = 'https://hook.us2.make.com/zqwo5c7ngz45bm4bxxgkqsdtx8y8q6sx';
+
+// Función auxiliar para enviar datos a Make de forma segura sin bloquear la app
+async function dispararWebhookMake(tipoEvento, datos) {
+    try {
+        await axios.post(WEBHOOK_URL, {
+            origen: 'Turismo Inteligente Backend',
+            evento: tipoEvento,
+            timestamp: new Date().toISOString(),
+            payload: datos
+        }, { headers: { 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('Aviso: No se pudo notificar a Make:', error.message);
+    }
+}
+
 // Inicializar Base de Datos SQLite con ruta absoluta segura para producción
 const dbPath = path.join(__dirname, 'turismo.db');
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -108,7 +125,6 @@ db.serialize(() => {
             destinos.forEach(d => stmtDestino.run(d));
             stmtDestino.finalize();
 
-            // Hospedajes de ejemplo
             const hospedajes = [
                 ['col01', 'Hotel Dann Avenida 19', 'Hotel', '$180.000 / noche'],
                 ['col01', 'Casa de Huéspedes Monserrate', 'Hostal', '$90.000 / noche'],
@@ -126,15 +142,21 @@ db.serialize(() => {
     });
 });
 
-// API: Registro
+// API: Registro (Dispara webhook a Make automáticamente)
 app.post('/api/auth/registro', async (req, res) => {
     const { nombre, email, password, rol } = req.body;
     try {
         const passwordHash = await bcrypt.hash(password, 10);
+        const tipoRol = rol || 'turista';
+        
         db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`,
-            [nombre, email, passwordHash, rol || 'turista'],
-            function(err) {
+            [nombre, email, passwordHash, tipoRol],
+            async function(err) {
                 if (err) return res.status(400).json({ error: 'El correo ya está registrado.' });
+                
+                // Disparar automatización en Make al registrarse
+                await dispararWebhookMake('REGISTRO_USUARIO', { nombre, email, rol: tipoRol });
+
                 res.json({ success: true, message: 'Usuario registrado con éxito.' });
             }
         );
@@ -143,13 +165,17 @@ app.post('/api/auth/registro', async (req, res) => {
     }
 });
 
-// API: Login
+// API: Login (Dispara webhook a Make automáticamente)
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
     db.get(`SELECT * FROM usuarios WHERE email = ?`, [email], async (err, user) => {
         if (err || !user) return res.status(401).json({ error: 'Credenciales inválidas.' });
         const match = await bcrypt.compare(password, user.password_hash);
         if (!match) return res.status(401).json({ error: 'Contraseña incorrecta.' });
+
+        // Disparar automatización en Make al iniciar sesión
+        await dispararWebhookMake('INICIO_SESION', { nombre: user.nombre, email: user.email, rol: user.rol });
+
         res.json({ success: true, usuario: { id: user.id_usuario, nombre: user.nombre, email: user.email, rol: user.rol } });
     });
 });
@@ -192,14 +218,17 @@ app.post('/api/turista/recomendar', (req, res) => {
 });
 
 // API: Actualizar aforo (Gestor DMO) y registrar auditoría ISO
-app.post('/api/destinos/actualizar', (req, res) => {
+app.post('/api/destinos/actualizar', async (req, res) => {
     const { id_destino, afluencia_actual, usuarioEmail } = req.body;
-    db.run("UPDATE destinos_turisticos SET afluencia_actual = ? WHERE id_destino = ?", [afluencia_actual, id_destino], function(err) {
+    db.run("UPDATE destinos_turisticos SET afluencia_actual = ? WHERE id_destino = ?", [afluencia_actual, id_destino], async function(err) {
         if (err) return res.status(500).json({ error: err.message });
 
         const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
         db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
             [fechaIso, usuarioEmail, `Actualización aforo destino ${id_destino} a ${afluencia_actual} visitantes`, 'MEDIA']);
+
+        // Notificar también a Make sobre el cambio de aforo crítico
+        await dispararWebhookMake('ACTUALIZACION_AFORO', { id_destino, afluencia_actual, usuarioEmail });
 
         res.json({ success: true, message: 'Aforo actualizado y registrado en auditoría correctamente.' });
     });
@@ -211,23 +240,6 @@ app.get('/api/auditoria/logs', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(logs);
     });
-});
-
-// API: Webhook para Make
-app.post('/api/webhook/automatizacion', async (req, res) => {
-    try {
-        const datosEvento = req.body;
-        const WEBHOOK_URL = 'https://hook.us2.make.com/zqwo5c7ngz45bm4bxxgkqsdtx8y8q6sx';
-        await axios.post(WEBHOOK_URL, {
-            origen: 'Turismo Inteligente Backend',
-            timestamp: new Date().toISOString(),
-            payload: datosEvento
-        }, { headers: { 'Content-Type': 'application/json' } });
-
-        res.json({ success: true, mensaje: 'Enviado a Make correctamente.' });
-    } catch (error) {
-        res.status(500).json({ error: 'Fallo al conectar con Make', detalle: error.message });
-    }
 });
 
 const PORT = process.env.PORT || 3000;
