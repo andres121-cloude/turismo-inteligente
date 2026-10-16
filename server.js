@@ -34,18 +34,23 @@ app.use(express.static(path.join(__dirname, 'public')));
 // URL de tu Webhook en Make
 const WEBHOOK_URL = 'https://hook.us2.make.com/zqwo5c7ngz45bm4bxxgkqsdtx8y8q6sx';
 
-// Función auxiliar para enviar datos a Make de forma segura sin bloquear la app
-async function dispararWebhookMake(tipoEvento, datos) {
-    try {
-        await axios.post(WEBHOOK_URL, {
-            origen: 'Turismo Inteligente Backend',
-            evento: tipoEvento,
-            timestamp: new Date().toISOString(),
-            payload: datos
-        }, { headers: { 'Content-Type': 'application/json' } });
-    } catch (error) {
-        console.error('Aviso: No se pudo notificar a Make:', error.message);
-    }
+// Función robusta para disparar Make asegurando traza en consola
+function dispararWebhookMake(tipoEvento, datos) {
+    axios.post(WEBHOOK_URL, {
+        origen: 'Turismo Inteligente Backend Cloud',
+        evento: tipoEvento,
+        timestamp: new Date().toISOString(),
+        payload: datos
+    }, { 
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 5000 
+    })
+    .then(() => {
+        console.log(`[MAKE SUCCESS] Evento ${tipoEvento} enviado correctamente.`);
+    })
+    .catch((error) => {
+        console.error(`[MAKE ERROR] Fallo al enviar ${tipoEvento}:`, error.message);
+    });
 }
 
 // Inicializar Base de Datos SQLite con ruta absoluta segura para producción
@@ -142,7 +147,7 @@ db.serialize(() => {
     });
 });
 
-// API: Registro (Dispara webhook a Make automáticamente)
+// API: Registro
 app.post('/api/auth/registro', async (req, res) => {
     const { nombre, email, password, rol } = req.body;
     try {
@@ -151,11 +156,11 @@ app.post('/api/auth/registro', async (req, res) => {
         
         db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`,
             [nombre, email, passwordHash, tipoRol],
-            async function(err) {
+            function(err) {
                 if (err) return res.status(400).json({ error: 'El correo ya está registrado.' });
                 
-                // Disparar automatización en Make al registrarse
-                await dispararWebhookMake('REGISTRO_USUARIO', { nombre, email, rol: tipoRol });
+                // Disparar Make en segundo plano
+                dispararWebhookMake('REGISTRO_USUARIO', { nombre, email, rol: tipoRol });
 
                 res.json({ success: true, message: 'Usuario registrado con éxito.' });
             }
@@ -165,7 +170,7 @@ app.post('/api/auth/registro', async (req, res) => {
     }
 });
 
-// API: Login (Dispara webhook a Make automáticamente)
+// API: Login
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
     db.get(`SELECT * FROM usuarios WHERE email = ?`, [email], async (err, user) => {
@@ -173,14 +178,14 @@ app.post('/api/auth/login', (req, res) => {
         const match = await bcrypt.compare(password, user.password_hash);
         if (!match) return res.status(401).json({ error: 'Contraseña incorrecta.' });
 
-        // Disparar automatización en Make al iniciar sesión
-        await dispararWebhookMake('INICIO_SESION', { nombre: user.nombre, email: user.email, rol: user.rol });
+        // Disparar Make en segundo plano de forma independiente
+        dispararWebhookMake('INICIO_SESION', { nombre: user.nombre, email: user.email, rol: user.rol });
 
         res.json({ success: true, usuario: { id: user.id_usuario, nombre: user.nombre, email: user.email, rol: user.rol } });
     });
 });
 
-// API: Obtener destinos con sus respectivos alojamientos
+// API: Obtener destinos con alojamientos
 app.get('/api/destinos', (req, res) => {
     db.all("SELECT * FROM destinos_turisticos", [], (err, destinos) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -197,7 +202,7 @@ app.get('/api/destinos', (req, res) => {
     });
 });
 
-// API: Recomendador para Turistas según preferencia
+// API: Recomendador Turista
 app.post('/api/turista/recomendar', (req, res) => {
     const { preferencia } = req.body;
     db.all("SELECT * FROM destinos_turisticos WHERE categoria = ?", [preferencia], (err, destinos) => {
@@ -217,18 +222,17 @@ app.post('/api/turista/recomendar', (req, res) => {
     });
 });
 
-// API: Actualizar aforo (Gestor DMO) y registrar auditoría ISO
-app.post('/api/destinos/actualizar', async (req, res) => {
+// API: Actualizar aforo DMO y auditoría
+app.post('/api/destinos/actualizar', (req, res) => {
     const { id_destino, afluencia_actual, usuarioEmail } = req.body;
-    db.run("UPDATE destinos_turisticos SET afluencia_actual = ? WHERE id_destino = ?", [afluencia_actual, id_destino], async function(err) {
+    db.run("UPDATE destinos_turisticos SET afluencia_actual = ? WHERE id_destino = ?", [afluencia_actual, id_destino], function(err) {
         if (err) return res.status(500).json({ error: err.message });
 
         const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
         db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
             [fechaIso, usuarioEmail, `Actualización aforo destino ${id_destino} a ${afluencia_actual} visitantes`, 'MEDIA']);
 
-        // Notificar también a Make sobre el cambio de aforo crítico
-        await dispararWebhookMake('ACTUALIZACION_AFORO', { id_destino, afluencia_actual, usuarioEmail });
+        dispararWebhookMake('ACTUALIZACION_AFORO', { id_destino, afluencia_actual, usuarioEmail });
 
         res.json({ success: true, message: 'Aforo actualizado y registrado en auditoría correctamente.' });
     });
