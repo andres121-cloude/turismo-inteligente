@@ -12,55 +12,34 @@ app.disable('x-powered-by');
 
 app.use(helmet({
     contentSecurityPolicy: false,
-    strictTransportSecurity: {
-        maxAge: 63072000,
-        includeSubDomains: true,
-        preload: true
-    },
+    strictTransportSecurity: { maxAge: 63072000, includeSubDomains: true, preload: true },
     xFrameOptions: { action: 'deny' },
     xContentTypeOptions: true,
     referrerPolicy: { policy: 'no-referrer' }
 }));
 
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role', 'x-user-id']
-}));
-
+app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role', 'x-user-id'] }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// URL de tu Webhook en Make
 const WEBHOOK_URL = 'https://hook.us2.make.com/zqwo5c7ngz45bm4bxxgkqsdtx8y8q6sx';
 
-// Función robusta para disparar Make asegurando traza en consola
 function dispararWebhookMake(tipoEvento, datos) {
     axios.post(WEBHOOK_URL, {
-        origen: 'Turismo Inteligente Backend Cloud',
+        origen: 'Turismo Inteligente Backend',
         evento: tipoEvento,
         timestamp: new Date().toISOString(),
-        payload: datos
-    }, { 
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 5000 
-    })
-    .then(() => {
-        console.log(`[MAKE SUCCESS] Evento ${tipoEvento} enviado correctamente.`);
-    })
-    .catch((error) => {
-        console.error(`[MAKE ERROR] Fallo al enviar ${tipoEvento}:`, error.message);
-    });
+        ...datos
+    }, { headers: { 'Content-Type': 'application/json' }, timeout: 5000 })
+    .catch(err => console.error('[MAKE ERROR]:', err.message));
 }
 
-// Inicializar Base de Datos SQLite con ruta absoluta segura para producción
 const dbPath = path.join(__dirname, 'turismo.db');
 const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) console.error('Error al abrir la base de datos', err.message);
-    else console.log('Conectado a la Base de Datos SQLite en:', dbPath);
+    if (err) console.error('Error al abrir DB', err.message);
+    else console.log('Conectado a SQLite.');
 });
 
-// Crear Tablas e Insertar Datos Semilla
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,20 +81,15 @@ db.serialize(() => {
         criticidad TEXT
     )`);
 
-    // Semilla de usuarios por defecto
     db.get("SELECT COUNT(*) as count FROM usuarios", async (err, row) => {
         if (row && row.count === 0) {
             const passGestor = await bcrypt.hash('gestor123', 10);
             const passTurista = await bcrypt.hash('turista123', 10);
-            
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, 
-                ['Carlos Gestor (DMO)', 'gestor@usb.edu.co', passGestor, 'dmo']);
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, 
-                ['Laura Turista', 'turista@gmail.com', passTurista, 'turista']);
+            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Carlos Gestor (DMO)', 'gestor@usb.edu.co', passGestor, 'dmo']);
+            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Laura Turista', 'turista@gmail.com', passTurista, 'turista']);
         }
     });
 
-    // Semilla de destinos turísticos y alojamientos
     db.get("SELECT COUNT(*) as count FROM destinos_turisticos", (err, row) => {
         if (row && row.count === 0) {
             const destinos = [
@@ -126,51 +100,43 @@ db.serialize(() => {
                 ['col05', 'La Candelaria y Museo del Oro', 'Bogotá: Centro colonial histórico.', 'historia', 2500, 1200, 18000, 72000, 850000, 4.6014, -74.0721, 'Moderado'],
                 ['col06', 'Santuario de Las Lajas', 'Ipiales: Basílica en el cañón.', 'historia', 1800, 600, 9500, 38000, 450000, 0.8114, -77.5878, 'Seguro']
             ];
-            const stmtDestino = db.prepare("INSERT INTO destinos_turisticos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            destinos.forEach(d => stmtDestino.run(d));
-            stmtDestino.finalize();
+            const stmt = db.prepare("INSERT INTO destinos_turisticos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            destinos.forEach(d => stmt.run(d));
+            stmt.finalize();
 
             const hospedajes = [
-                ['col01', 'Hotel Dann Avenida 19', 'Hotel', '$180.000 / noche'],
-                ['col01', 'Casa de Huéspedes Monserrate', 'Hostal', '$90.000 / noche'],
-                ['col02', 'Bicentenario Hotel Guatapé', 'Hotel Boutique', '$250.000 / noche'],
-                ['col02', 'Bosio Hostal El Peñol', 'Hostal', '$110.000 / noche'],
-                ['col03', 'Hotel Movich Intercontinental Cali', 'Hotel 5 Estrellas', '$320.000 / noche'],
-                ['col04', 'Hotel Parque Arví Ecoresort', 'Ecoresort', '$290.000 / noche'],
-                ['col05', 'Hotel de la Opera Candelaria', 'Histórico', '$310.000 / noche'],
-                ['col06', 'Hotel Las Lajas Sanctuario', 'Hotel', '$140.000 / noche']
+                ['col01', 'Hotel Dann Avenida 19', 'Hotel', '$180.000'],
+                ['col01', 'Casa de Huéspedes Monserrate', 'Hostal', '$90.000'],
+                ['col02', 'Bicentenario Hotel Guatapé', 'Hotel Boutique', '$250.000'],
+                ['col03', 'Hotel Movich Intercontinental Cali', 'Hotel 5 Estrellas', '$320.000'],
+                ['col04', 'Hotel Parque Arví Ecoresort', 'Ecoresort', '$290.000'],
+                ['col05', 'Hotel de la Opera Candelaria', 'Histórico', '$310.000'],
+                ['col06', 'Hotel Las Lajas Sanctuario', 'Hotel', '$140.000']
             ];
-            const stmtHospedaje = db.prepare("INSERT INTO hospedajes (id_destino, nombre_hospedaje, tipo, precio_noche) VALUES (?, ?, ?, ?)");
-            hospedajes.forEach(h => stmtHospedaje.run(h));
-            stmtHospedaje.finalize();
+            const stmtH = db.prepare("INSERT INTO hospedajes (id_destino, nombre_hospedaje, tipo, precio_noche) VALUES (?, ?, ?, ?)");
+            hospedajes.forEach(h => stmtH.run(h));
+            stmtH.finalize();
         }
     });
 });
 
-// API: Registro
 app.post('/api/auth/registro', async (req, res) => {
     const { nombre, email, password, rol } = req.body;
     try {
         const passwordHash = await bcrypt.hash(password, 10);
-        const tipoRol = rol || 'turista';
-        
         db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`,
-            [nombre, email, passwordHash, tipoRol],
+            [nombre, email, passwordHash, rol || 'turista'],
             function(err) {
                 if (err) return res.status(400).json({ error: 'El correo ya está registrado.' });
-                
-                // Disparar Make en segundo plano
-                dispararWebhookMake('REGISTRO_USUARIO', { nombre, email, rol: tipoRol });
-
+                dispararWebhookMake('REGISTRO', { nombre, email, destino: 'N/A (Registro)' });
                 res.json({ success: true, message: 'Usuario registrado con éxito.' });
             }
         );
     } catch (e) {
-        res.status(500).json({ error: 'Error interno en el servidor.' });
+        res.status(500).json({ error: 'Error en el servidor.' });
     }
 });
 
-// API: Login
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
     db.get(`SELECT * FROM usuarios WHERE email = ?`, [email], async (err, user) => {
@@ -178,21 +144,14 @@ app.post('/api/auth/login', (req, res) => {
         const match = await bcrypt.compare(password, user.password_hash);
         if (!match) return res.status(401).json({ error: 'Contraseña incorrecta.' });
 
-        // Disparar Make en segundo plano de forma independiente
-        dispararWebhookMake('INICIO_SESION', { nombre: user.nombre, email: user.email, rol: user.rol });
-
+        dispararWebhookMake('INICIO_SESION', { nombre: user.nombre, email: user.email, destino: 'N/A (Inicio Sesión)' });
         res.json({ success: true, usuario: { id: user.id_usuario, nombre: user.nombre, email: user.email, rol: user.rol } });
     });
 });
 
-// API: Obtener destinos con alojamientos
 app.get('/api/destinos', (req, res) => {
     db.all("SELECT * FROM destinos_turisticos", [], (err, destinos) => {
-        if (err) return res.status(500).json({ error: err.message });
-        
         db.all("SELECT * FROM hospedajes", [], (errH, hospedajes) => {
-            if (errH) return res.status(500).json({ error: errH.message });
-
             const resultado = destinos.map(d => ({
                 ...d,
                 hospedajes: hospedajes.filter(h => h.id_destino === d.id_destino)
@@ -202,51 +161,40 @@ app.get('/api/destinos', (req, res) => {
     });
 });
 
-// API: Recomendador Turista
 app.post('/api/turista/recomendar', (req, res) => {
-    const { preferencia } = req.body;
+    const { preferencia, usuarioNombre, usuarioEmail } = req.body;
     db.all("SELECT * FROM destinos_turisticos WHERE categoria = ?", [preferencia], (err, destinos) => {
-        if (err || destinos.length === 0) {
-            db.get("SELECT * FROM destinos_turisticos LIMIT 1", [], (err2, destFallback) => {
-                if (!destFallback) return res.status(404).json({ error: 'No hay destinos' });
-                db.all("SELECT * FROM hospedajes WHERE id_destino = ?", [destFallback.id_destino], (errH, hList) => {
-                    res.json({ destino: { ...destFallback, hospedajes: hList } });
-                });
-            });
-            return;
-        }
-        const elegido = destinos[0];
+        const elegido = (destinos && destinos.length > 0) ? destinos[0] : null;
+        if (!elegido) return res.status(404).json({ error: 'No hay destinos' });
+
         db.all("SELECT * FROM hospedajes WHERE id_destino = ?", [elegido.id_destino], (errH, hList) => {
+            dispararWebhookMake('PLANIFICACION_RUTA', { nombre: usuarioNombre || 'Turista', email: usuarioEmail || 'N/A', destino: elegido.nombre });
             res.json({ destino: { ...elegido, hospedajes: hList } });
         });
     });
 });
 
-// API: Actualizar aforo DMO y auditoría
+app.post('/api/turista/cotizar', (req, res) => {
+    const { usuarioNombre, usuarioEmail, destinoNombre, personas, dias } = req.body;
+    const costoTotal = personas * dias * 120000; // Tarifa base estimada COP
+    dispararWebhookMake('COTIZACION_VIAJE', { nombre: usuarioNombre, email: usuarioEmail, destino: `${destinoNombre} (${personas} pers, ${dias} días - Total: $${costoTotal.toLocaleString()})` });
+    res.json({ success: true, costoTotal });
+});
+
 app.post('/api/destinos/actualizar', (req, res) => {
     const { id_destino, afluencia_actual, usuarioEmail } = req.body;
     db.run("UPDATE destinos_turisticos SET afluencia_actual = ? WHERE id_destino = ?", [afluencia_actual, id_destino], function(err) {
         if (err) return res.status(500).json({ error: err.message });
-
         const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
         db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
-            [fechaIso, usuarioEmail, `Actualización aforo destino ${id_destino} a ${afluencia_actual} visitantes`, 'MEDIA']);
-
-        dispararWebhookMake('ACTUALIZACION_AFORO', { id_destino, afluencia_actual, usuarioEmail });
-
-        res.json({ success: true, message: 'Aforo actualizado y registrado en auditoría correctamente.' });
+            [fechaIso, usuarioEmail, `Actualización aforo destino ${id_destino} a ${afluencia_actual}`, 'MEDIA']);
+        res.json({ success: true, message: 'Aforo actualizado.' });
     });
 });
 
-// API: Obtener logs de auditoría
 app.get('/api/auditoria/logs', (req, res) => {
-    db.all("SELECT * FROM auditoria_logs ORDER BY id_log DESC LIMIT 20", [], (err, logs) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(logs);
-    });
+    db.all("SELECT * FROM auditoria_logs ORDER BY id_log DESC LIMIT 20", [], (err, logs) => res.json(logs));
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
-});
+app.listen(PORT, '0.0.0.0', () => console.log(`Servidor en puerto ${PORT}`));
