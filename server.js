@@ -22,16 +22,32 @@ app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// URL NUEVA DE MAKE
 const WEBHOOK_URL = 'https://hook.us2.make.com/hgg9bij584ausnbbm2nwxd20e211ypsl';
 
 function dispararWebhookMake(tipoEvento, datos) {
-    axios.post(WEBHOOK_URL, {
+    const payload = {
         origen: 'Turismo Inteligente Backend',
         evento: tipoEvento,
         timestamp: new Date().toISOString(),
         ...datos
-    }, { headers: { 'Content-Type': 'application/json' }, timeout: 5000 })
-    .catch(err => console.error('[MAKE ERROR]:', err.message));
+    };
+
+    console.log(`[DISPARANDO MAKE] Evento: ${tipoEvento}`, JSON.stringify(payload));
+
+    axios.post(WEBHOOK_URL, payload, { 
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000 
+    })
+    .then(response => {
+        console.log(`[MAKE EXITO] ${tipoEvento} respondido con status:`, response.status);
+    })
+    .catch(error => {
+        console.error(`[MAKE ERROR] Fallo al enviar ${tipoEvento}:`, error.message);
+        if (error.response) {
+            console.error('Datos del error:', error.response.data);
+        }
+    });
 }
 
 const dbPath = path.join(__dirname, 'turismo.db');
@@ -128,7 +144,7 @@ app.post('/api/auth/registro', async (req, res) => {
             [nombre, email, passwordHash, rol || 'turista'],
             function(err) {
                 if (err) return res.status(400).json({ error: 'El correo ya está registrado.' });
-                dispararWebhookMake('REGISTRO', { nombre, email, destino: 'N/A (Registro)' });
+                dispararWebhookMake('REGISTRO', { nombre, email, destino: 'N/A (Registro de cuenta)' });
                 res.json({ success: true, message: 'Usuario registrado con éxito.' });
             }
         );
@@ -144,7 +160,7 @@ app.post('/api/auth/login', (req, res) => {
         const match = await bcrypt.compare(password, user.password_hash);
         if (!match) return res.status(401).json({ error: 'Contraseña incorrecta.' });
 
-        dispararWebhookMake('INICIO_SESION', { nombre: user.nombre, email: user.email, destino: 'N/A (Inicio Sesión)' });
+        dispararWebhookMake('INICIO_SESION', { nombre: user.nombre, email: user.email, destino: 'N/A (Acceso a plataforma)' });
         res.json({ success: true, usuario: { id: user.id_usuario, nombre: user.nombre, email: user.email, rol: user.rol } });
     });
 });
@@ -176,8 +192,14 @@ app.post('/api/turista/recomendar', (req, res) => {
 
 app.post('/api/turista/cotizar', (req, res) => {
     const { usuarioNombre, usuarioEmail, destinoNombre, personas, dias } = req.body;
-    const costoTotal = personas * dias * 120000; // Tarifa base estimada COP
-    dispararWebhookMake('COTIZACION_VIAJE', { nombre: usuarioNombre, email: usuarioEmail, destino: `${destinoNombre} (${personas} pers, ${dias} días - Total: $${costoTotal.toLocaleString()})` });
+    const costoTotal = Number(personas) * Number(dias) * 120000;
+    
+    dispararWebhookMake('COTIZACION_VIAJE', { 
+        nombre: usuarioNombre || 'Turista', 
+        email: usuarioEmail || 'N/A', 
+        destino: `${destinoNombre} (${personas} pers, ${dias} días - Total: $${costoTotal.toLocaleString()} COP)` 
+    });
+
     res.json({ success: true, costoTotal });
 });
 
