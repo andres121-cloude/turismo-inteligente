@@ -22,7 +22,7 @@ app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const WEBHOOK_URL = 'https://hook.us2.make.com/zqwo5c7ngz45bm4bxxgkqsdtx8y8q6sx';
+const WEBHOOK_URL = 'https://hook.us2.make.com/hgg9bij584ausnbbm2nwxd20e211ypsl';
 
 function dispararWebhookMake(tipoEvento, datos) {
     axios.post(WEBHOOK_URL, {
