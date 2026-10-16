@@ -31,10 +31,11 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Inicializar Base de Datos SQLite
-const db = new sqlite3.Database('./turismo.db', (err) => {
+// Inicializar Base de Datos SQLite con ruta absoluta para producción
+const dbPath = path.join(__dirname, 'turismo.db');
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) console.error('Error al abrir la base de datos', err.message);
-    else console.log('Conectado a la Base de Datos SQLite.');
+    else console.log('Conectado a la Base de Datos SQLite en:', dbPath);
 });
 
 // Crear Tablas e Insertar Datos Semilla
@@ -93,6 +94,27 @@ db.serialize(() => {
     });
 });
 
+// API: Registro de nuevos usuarios
+app.post('/api/auth/register', async (req, res) => {
+    const { nombre, email, password } = req.body;
+    try {
+        const passwordHash = await bcrypt.hash(password, 10);
+        const rol = 'turista'; 
+        
+        db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`,
+            [nombre, email, passwordHash, rol],
+            function(err) {
+                if (err) {
+                    return res.status(400).json({ error: 'El correo ya está registrado o los datos son inválidos.' });
+                }
+                res.json({ success: true, mensaje: 'Usuario registrado correctamente.', id: this.lastID });
+            }
+        );
+    } catch (error) {
+        res.status(500).json({ error: 'Error en el servidor al registrar.' });
+    }
+});
+
 // API: Login
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
@@ -104,7 +126,7 @@ app.post('/api/auth/login', (req, res) => {
     });
 });
 
-// API: Obtener destinos (Esencial para que cargue la interfaz y los mapas)
+// API: Obtener destinos
 app.get('/api/destinos', (req, res) => {
     db.all("SELECT * FROM destinos_turisticos", [], (err, destinos) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -118,7 +140,6 @@ app.post('/api/webhook/automatizacion', async (req, res) => {
         const datosEvento = req.body;
         const WEBHOOK_URL = 'https://hook.us2.make.com/zqwo5c7ngz45bm4bxxgkqsdtx8y8q6sx';
 
-        // Enviamos con cabeceras explícitas de tipo JSON para evitar bloqueos 404
         await axios.post(WEBHOOK_URL, {
             origen: 'Turismo Inteligente Backend',
             timestamp: new Date().toISOString(),
@@ -130,7 +151,6 @@ app.post('/api/webhook/automatizacion', async (req, res) => {
         res.json({ success: true, mensaje: 'Enviado a Make correctamente.' });
     } catch (error) {
         console.error('Error detallado con Make:', error.response?.status, error.message);
-        // Devolvemos respuesta amigable sin romper el flujo de la app
         res.status(500).json({ error: 'Fallo al conectar con Make', detalle: error.message });
     }
 });
