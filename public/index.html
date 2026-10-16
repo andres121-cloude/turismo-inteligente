@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Tourism - Monserrate, Guatapé y Destinos Emblemáticos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased flex items-center justify-center min-h-screen">
+
+    <div class="max-w-5xl w-full mx-auto p-4">
+        
+        <!-- SECCIÓN DE AUTENTICACIÓN -->
+        <div id="auth-container" class="bg-slate-950 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md mx-auto">
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-mountain-sun text-emerald-400 text-4xl mb-2"></i>
+                <h1 class="text-2xl font-bold">Turismo Inteligente</h1>
+                <p class="text-xs text-slate-400 mt-1">Monserrate, Guatapé, Cali y más (Colombia)</p>
+            </div>
+
+            <div class="flex border-b border-slate-800 mb-6">
+                <button onclick="mostrarTab('login')" id="tab-login-btn" class="flex-1 pb-2 font-bold text-sm text-blue-400 border-b-2 border-blue-500">Iniciar Sesión</button>
+                <button onclick="mostrarTab('registro')" id="tab-registro-btn" class="flex-1 pb-2 font-medium text-sm text-slate-400">Registrarse</button>
+            </div>
+
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Correo Electrónico:</label>
+                    <input type="email" id="login-email" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="ejemplo@correo.com">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Contraseña:</label>
+                    <input type="password" id="login-pass" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg text-sm transition">Iniciar Sesión</button>
+                <p class="text-[11px] text-slate-500 text-center mt-3">Gestor Demo: <b>gestor@usb.edu.co</b> / <b>gestor123</b></p>
+            </form>
+
+            <form id="form-registro" onsubmit="handleRegistro(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Nombre Completo:</label>
+                    <input type="text" id="reg-nombre" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="Tu Nombre">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Correo:</label>
+                    <input type="email" id="reg-email" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="ejemplo@correo.com">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Contraseña:</label>
+                    <input type="password" id="reg-pass" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="••••••••">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Tipo de Usuario:</label>
+                    <select id="reg-rol" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white">
+                        <option value="turista">Turista</option>
+                        <option value="dmo">Gestor DMO</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg text-sm transition">Registrarse</button>
+            </form>
+        </div>
+
+        <!-- APLICACIÓN PRINCIPAL -->
+        <div id="app-container" class="hidden space-y-6">
+            
+            <header class="flex justify-between items-center border-b border-slate-800 pb-4 bg-slate-950 p-4 rounded-xl">
+                <div>
+                    <h2 id="user-welcome" class="font-bold text-lg text-emerald-400">Bienvenido</h2>
+                    <p class="text-xs text-slate-400">Rol activo: <span id="user-role-badge" class="uppercase font-bold"></span></p>
+                </div>
+                <button onclick="cerrarSesion()" class="bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i> Cerrar Sesión
+                </button>
+            </header>
+
+            <!-- VISTA TURISTA -->
+            <div id="panel-turista" class="space-y-6 hidden">
+                <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-base font-bold mb-2 text-blue-300"><i class="fa-solid fa-compass"></i> Planificador de Rutas (Google Maps) & Alojamientos</h3>
+                    <p class="text-xs text-slate-400 mb-4">Selecciona tu preferencia turística para recibir recomendaciones inteligentes en los íconos principales de Colombia:</p>
+                    <div class="flex gap-3">
+                        <select id="turista-pref" class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white flex-1">
+                            <option value="historia">Historia y Santuarios (Monserrate, Candelaria, etc.)</option>
+                            <option value="aventura">Aventura y Paisajes (Guatapé, Piedra del Peñol)</option>
+                            <option value="naturaleza">Naturaleza y Parques (Parque Arví)</option>
+                            <option value="cultura">Cultura y Monumentos (Cali)</option>
+                        </select>
+                        <button onclick="buscarRecomendacion()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium">Generar Ruta</button>
+                    </div>
+                    
+                    <div id="resultado-rec" class="mt-4 hidden bg-slate-900 p-5 rounded-xl border border-slate-800 text-sm space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- VISTA GESTOR DMO -->
+            <div id="panel-dmo" class="space-y-6 hidden">
+                <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-base font-bold mb-2 text-purple-400"><i class="fa-solid fa-sliders"></i> Panel Operativo DMO & Control de Aforos</h3>
+                    <p class="text-xs text-slate-400 mb-4">Actualiza la afluencia en tiempo real para evitar la saturación masiva:</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mb-6">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Destino:</label>
+                            <select id="select-dest" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Nueva Afluencia:</label>
+                            <input type="number" id="input-afluencia" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white" placeholder="Ej. 2100">
+                        </div>
+                        <button onclick="actualizarAforo()" class="bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded-lg text-sm font-medium">Actualizar en BD</button>
+                    </div>
+
+                    <div class="border-t border-slate-800 pt-4">
+                        <h4 class="text-xs font-bold text-slate-300 mb-2"><i class="fa-solid fa-shield-halved text-emerald-400"></i> Registro de Actividad y Auditoría (ISO 27001)</h4>
+                        <div id="logs-container" class="bg-slate-900 p-3 rounded-lg border border-slate-800 text-[11px] max-h-36 overflow-y-auto space-y-1 text-slate-300 font-mono"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CATÁLOGO GENERAL -->
+            <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                <h3 class="text-base font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-landmark text-emerald-400"></i> Destinos Emblemáticos de Colombia (Monserrate, Guatapé, Cali, etc.)
+                </h3>
+                <div id="destinos-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let usuarioActual = null;
+
+        function mostrarTab(tab) {
+            if (tab === 'login') {
+                document.getElementById('form-login').classList.remove('hidden');
+                document.getElementById('form-registro').classList.add('hidden');
+                document.getElementById('tab-login-btn').className = "flex-1 pb-2 font-bold text-sm text-blue-400 border-b-2 border-blue-500";
+                document.getElementById('tab-registro-btn').className = "flex-1 pb-2 font-medium text-sm text-slate-400";
+            } else {
+                document.getElementById('form-login').classList.add('hidden');
+                document.getElementById('form-registro').classList.remove('hidden');
+                document.getElementById('tab-registro-btn').className = "flex-1 pb-2 font-bold text-sm text-emerald-400 border-b-2 border-emerald-500";
+                document.getElementById('tab-login-btn').className = "flex-1 pb-2 font-medium text-sm text-slate-400";
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-pass').value;
+
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                usuarioActual = data.usuario;
+                iniciarSesionExito();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function handleRegistro(e) {
+            e.preventDefault();
+            const nombre = document.getElementById('reg-nombre').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-pass').value;
+            const rol = document.getElementById('reg-rol').value;
+
+            const res = await fetch('/api/auth/registro', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre, email, password, rol })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                alert(data.message);
+                mostrarTab('login');
+            } else {
+                alert(data.error);
+            }
+        }
+
+        function iniciarSesionExito() {
+            document.getElementById('auth-container').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            
+            document.getElementById('user-welcome').innerText = `Hola, ${usuarioActual.nombre}`;
+            document.getElementById('user-role-badge').innerText = usuarioActual.rol;
+
+            if (usuarioActual.rol === 'dmo') {
+                document.getElementById('panel-dmo').classList.remove('hidden');
+                cargarLogsAuditoria();
+            } else {
+                document.getElementById('panel-turista').classList.remove('hidden');
+            }
+            cargarDestinos();
+        }
+
+        function cerrarSesion() {
+            usuarioActual = null;
+            document.getElementById('app-container').classList.add('hidden');
+            document.getElementById('auth-container').classList.remove('hidden');
+            document.getElementById('panel-dmo').classList.add('hidden');
+            document.getElementById('panel-turista').classList.add('hidden');
+        }
+
+        async function cargarDestinos() {
+            const res = await fetch('/api/destinos');
+            const destinos = await res.json();
+            const grid = document.getElementById('destinos-grid');
+            const select = document.getElementById('select-dest');
+            
+            grid.innerHTML = '';
+            if(select) select.innerHTML = '';
+
+            destinos.forEach(d => {
+                const porcentaje = Math.round((d.afluencia_actual / d.capacidad_carga_fisica) * 100);
+                let hospedajesHtml = d.hospedajes.map(h => `<li class="text-xs text-slate-300"><i class="fa-solid fa-bed text-blue-400 mr-1"></i> ${h.nombre_hospedaje} (${h.tipo}) - <span class="text-emerald-400">${h.precio_noche}</span></li>`).join('');
+
+                grid.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col justify-between space-y-3">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-800 text-blue-400">${d.categoria}</span>
+                            <h4 class="font-bold text-sm text-white mt-1">${d.nombre}</h4>
+                            <p class="text-xs text-slate-400 mt-1">${d.descripcion}</p>
+                        </div>
+                        
+                        <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-[11px] grid grid-cols-3 gap-2 text-center">
+                            <div><span class="text-slate-400 block">Semana</span><strong class="text-blue-400">${d.visitantes_semana}</strong></div>
+                            <div><span class="text-slate-400 block">Mes</span><strong class="text-purple-400">${d.visitantes_mes}</strong></div>
+                            <div><span class="text-slate-400 block">Año</span><strong class="text-emerald-400">${d.visitantes_ano}</strong></div>
+                        </div>
+
+                        <div>
+                            <p class="text-xs font-bold text-slate-300 mb-1"><i class="fa-solid fa-house-chimney"></i> Hoteles y Alojamientos Cerca:</p>
+                            <ul class="space-y-1 bg-slate-950/50 p-2 rounded border border-slate-800/60">${hospedajesHtml || '<li class="text-xs text-slate-500">Sin hospedajes registrados.</li>'}</ul>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
+                            <span class="text-slate-300">Ocupación: <b>${porcentaje}%</b></span>
+                            <a href="https://www.google.com/maps/search/?api=1&query=${d.latitud},${d.longitud}" target="_blank" class="text-blue-400 hover:underline"><i class="fa-solid fa-map-location-dot"></i> Abrir en Maps</a>
+                        </div>
+                    </div>
+                `;
+                if(select) {
+                    select.innerHTML += `<option value="${d.id_destino}">${d.nombre} (Cap: ${d.capacidad_carga_fisica})</option>`;
+                }
+            });
+        }
+
+        async function cargarLogsAuditoria() {
+            const res = await fetch('/api/auditoria/logs');
+            const logs = await res.json();
+            const container = document.getElementById('logs-container');
+            container.innerHTML = '';
+            logs.forEach(l => {
+                container.innerHTML += `<div>[${l.fecha_hora}] <b>${l.usuario}</b> -> ${l.accion} (<span class="text-purple-400">${l.criticidad}</span>)</div>`;
+            });
+        }
+
+        async function buscarRecomendacion() {
+            const preferencia = document.getElementById('turista-pref').value;
+            const res = await fetch('/api/turista/recomendar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ preferencia })
+            });
+            const data = await res.json();
+            const box = document.getElementById('resultado-rec');
+            box.classList.remove('hidden');
+
+            if (!data.destino) {
+                box.innerHTML = `<p class="text-red-400">No se encontraron destinos disponibles.</p>`;
+                return;
+            }
+
+            const dest = data.destino;
+            const porcentaje = Math.round((dest.afluencia_actual / dest.capacidad_carga_fisica) * 100);
+            const urlGoogleMaps = `https://www.google.com/maps/search/?api=1&query=${dest.latitud},${dest.longitud}`;
+            
+            let hospedajesRec = dest.hospedajes.map(h => `<li class="text-xs text-slate-300"><i class="fa-solid fa-bed text-blue-400 mr-1"></i> ${h.nombre_hospedaje} (${h.tipo}) - <span class="text-emerald-400">${h.precio_noche}</span></li>`).join('');
+
+            box.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-bold text-emerald-400 text-base"><i class="fa-solid fa-circle-check"></i> Ruta Óptima Sugerida</h4>
+                        <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-semibold">
+                            Ocupación: ${porcentaje}%
+                        </span>
+                    </div>
+                    <p class="text-white font-bold text-lg">${dest.nombre}</p>
+                    <p class="text-xs text-slate-300">${dest.descripcion}</p>
+                    
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs grid grid-cols-3 gap-2 text-center">
+                        <div><span class="text-slate-400 block">Semana</span><strong class="text-blue-400">${dest.visitantes_semana}</strong></div>
+                        <div><span class="text-slate-400 block">Mes</span><strong class="text-purple-400">${dest.visitantes_mes}</strong></div>
+                        <div><span class="text-slate-400 block">Año</span><strong class="text-emerald-400">${dest.visitantes_ano}</strong></div>
+                    </div>
+
+                    <div>
+                        <p class="text-xs font-bold text-slate-200 mb-1"><i class="fa-solid fa-house-chimney text-emerald-400"></i> Hoteles y Alojamientos Cercanos:</p>
+                        <ul class="space-y-1 bg-slate-950 p-2.5 rounded border border-slate-800">${hospedajesRec || '<li class="text-xs text-slate-500">Sin hospedajes cercanos.</li>'}</ul>
+                    </div>
+
+                    <div class="pt-2 flex justify-between items-center">
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-location-dot text-blue-400 mr-1"></i> Coordenadas: ${dest.latitud}, ${dest.longitud}</span>
+                        <a href="${urlGoogleMaps}" target="_blank" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
+                            <i class="fa-solid fa-map-location-dot"></i> Abrir ruta en Google Maps
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function actualizarAforo() {
+            const id_destino = document.getElementById('select-dest').value;
+            const afluencia_actual = parseInt(document.getElementById('input-afluencia').value);
+
+            if(isNaN(afluencia_actual)) return alert("Ingresa un número válido");
+
+            const res = await fetch('/api/destinos/actualizar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_destino, afluencia_actual, usuarioEmail: usuarioActual.email })
+            });
+            const data = await res.json();
+            alert(data.message);
+            cargarDestinos();
+            cargarLogsAuditoria();
+        }
+    </script>
+</body>
+</html>
