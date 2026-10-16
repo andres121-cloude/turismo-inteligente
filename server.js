@@ -31,7 +31,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Inicializar Base de Datos SQLite con ruta absoluta para producción
+// Inicializar Base de Datos SQLite con ruta absoluta segura para producción
 const dbPath = path.join(__dirname, 'turismo.db');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) console.error('Error al abrir la base de datos', err.message);
@@ -63,6 +63,23 @@ db.serialize(() => {
         estado TEXT
     )`);
 
+    db.run(`CREATE TABLE IF NOT EXISTS hospedajes (
+        id_hospedaje INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_destino TEXT,
+        nombre_hospedaje TEXT NOT NULL,
+        tipo TEXT,
+        precio_noche TEXT,
+        FOREIGN KEY(id_destino) REFERENCES destinos_turisticos(id_destino)
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS auditoria_logs (
+        id_log INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha_hora TEXT,
+        usuario TEXT,
+        accion TEXT,
+        criticidad TEXT
+    )`);
+
     // Semilla de usuarios por defecto
     db.get("SELECT COUNT(*) as count FROM usuarios", async (err, row) => {
         if (row && row.count === 0) {
@@ -76,7 +93,7 @@ db.serialize(() => {
         }
     });
 
-    // Semilla de destinos turísticos
+    // Semilla de destinos turísticos y alojamientos
     db.get("SELECT COUNT(*) as count FROM destinos_turisticos", (err, row) => {
         if (row && row.count === 0) {
             const destinos = [
@@ -90,28 +107,39 @@ db.serialize(() => {
             const stmtDestino = db.prepare("INSERT INTO destinos_turisticos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             destinos.forEach(d => stmtDestino.run(d));
             stmtDestino.finalize();
+
+            // Hospedajes de ejemplo
+            const hospedajes = [
+                ['col01', 'Hotel Dann Avenida 19', 'Hotel', '$180.000 / noche'],
+                ['col01', 'Casa de Huéspedes Monserrate', 'Hostal', '$90.000 / noche'],
+                ['col02', 'Bicentenario Hotel Guatapé', 'Hotel Boutique', '$250.000 / noche'],
+                ['col02', 'Bosio Hostal El Peñol', 'Hostal', '$110.000 / noche'],
+                ['col03', 'Hotel Movich Intercontinental Cali', 'Hotel 5 Estrellas', '$320.000 / noche'],
+                ['col04', 'Hotel Parque Arví Ecoresort', 'Ecoresort', '$290.000 / noche'],
+                ['col05', 'Hotel de la Opera Candelaria', 'Histórico', '$310.000 / noche'],
+                ['col06', 'Hotel Las Lajas Sanctuario', 'Hotel', '$140.000 / noche']
+            ];
+            const stmtHospedaje = db.prepare("INSERT INTO hospedajes (id_destino, nombre_hospedaje, tipo, precio_noche) VALUES (?, ?, ?, ?)");
+            hospedajes.forEach(h => stmtHospedaje.run(h));
+            stmtHospedaje.finalize();
         }
     });
 });
 
-// API: Registro de nuevos usuarios
-app.post('/api/auth/register', async (req, res) => {
-    const { nombre, email, password } = req.body;
+// API: Registro
+app.post('/api/auth/registro', async (req, res) => {
+    const { nombre, email, password, rol } = req.body;
     try {
         const passwordHash = await bcrypt.hash(password, 10);
-        const rol = 'turista'; 
-        
         db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`,
-            [nombre, email, passwordHash, rol],
+            [nombre, email, passwordHash, rol || 'turista'],
             function(err) {
-                if (err) {
-                    return res.status(400).json({ error: 'El correo ya está registrado o los datos son inválidos.' });
-                }
-                res.json({ success: true, mensaje: 'Usuario registrado correctamente.', id: this.lastID });
+                if (err) return res.status(400).json({ error: 'El correo ya está registrado.' });
+                res.json({ success: true, message: 'Usuario registrado con éxito.' });
             }
         );
-    } catch (error) {
-        res.status(500).json({ error: 'Error en el servidor al registrar.' });
+    } catch (e) {
+        res.status(500).json({ error: 'Error interno en el servidor.' });
     }
 });
 
@@ -126,31 +154,78 @@ app.post('/api/auth/login', (req, res) => {
     });
 });
 
-// API: Obtener destinos
+// API: Obtener destinos con sus respectivos alojamientos
 app.get('/api/destinos', (req, res) => {
     db.all("SELECT * FROM destinos_turisticos", [], (err, destinos) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(destinos);
+        
+        db.all("SELECT * FROM hospedajes", [], (errH, hospedajes) => {
+            if (errH) return res.status(500).json({ error: errH.message });
+
+            const resultado = destinos.map(d => ({
+                ...d,
+                hospedajes: hospedajes.filter(h => h.id_destino === d.id_destino)
+            }));
+            res.json(resultado);
+        });
     });
 });
 
-// API: Webhook para Make con manejo blindado de errores
+// API: Recomendador para Turistas según preferencia
+app.post('/api/turista/recomendar', (req, res) => {
+    const { preferencia } = req.body;
+    db.all("SELECT * FROM destinos_turisticos WHERE categoria = ?", [preferencia], (err, destinos) => {
+        if (err || destinos.length === 0) {
+            db.get("SELECT * FROM destinos_turisticos LIMIT 1", [], (err2, destFallback) => {
+                if (!destFallback) return res.status(404).json({ error: 'No hay destinos' });
+                db.all("SELECT * FROM hospedajes WHERE id_destino = ?", [destFallback.id_destino], (errH, hList) => {
+                    res.json({ destino: { ...destFallback, hospedajes: hList } });
+                });
+            });
+            return;
+        }
+        const elegido = destinos[0];
+        db.all("SELECT * FROM hospedajes WHERE id_destino = ?", [elegido.id_destino], (errH, hList) => {
+            res.json({ destino: { ...elegido, hospedajes: hList } });
+        });
+    });
+});
+
+// API: Actualizar aforo (Gestor DMO) y registrar auditoría ISO
+app.post('/api/destinos/actualizar', (req, res) => {
+    const { id_destino, afluencia_actual, usuarioEmail } = req.body;
+    db.run("UPDATE destinos_turisticos SET afluencia_actual = ? WHERE id_destino = ?", [afluencia_actual, id_destino], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+            [fechaIso, usuarioEmail, `Actualización aforo destino ${id_destino} a ${afluencia_actual} visitantes`, 'MEDIA']);
+
+        res.json({ success: true, message: 'Aforo actualizado y registrado en auditoría correctamente.' });
+    });
+});
+
+// API: Obtener logs de auditoría
+app.get('/api/auditoria/logs', (req, res) => {
+    db.all("SELECT * FROM auditoria_logs ORDER BY id_log DESC LIMIT 20", [], (err, logs) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(logs);
+    });
+});
+
+// API: Webhook para Make
 app.post('/api/webhook/automatizacion', async (req, res) => {
     try {
         const datosEvento = req.body;
         const WEBHOOK_URL = 'https://hook.us2.make.com/zqwo5c7ngz45bm4bxxgkqsdtx8y8q6sx';
-
         await axios.post(WEBHOOK_URL, {
             origen: 'Turismo Inteligente Backend',
             timestamp: new Date().toISOString(),
             payload: datosEvento
-        }, {
-            headers: { 'Content-Type': 'application/json' }
-        });
+        }, { headers: { 'Content-Type': 'application/json' } });
 
         res.json({ success: true, mensaje: 'Enviado a Make correctamente.' });
     } catch (error) {
-        console.error('Error detallado con Make:', error.response?.status, error.message);
         res.status(500).json({ error: 'Fallo al conectar con Make', detalle: error.message });
     }
 });
