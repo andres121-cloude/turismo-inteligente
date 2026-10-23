@@ -19,11 +19,11 @@ app.use(helmet({
     referrerPolicy: { policy: 'no-referrer' }
 }));
 
-app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role', 'x-user-id'] }));
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role', 'x-user-id'] }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// URL DE TU WEBHOOK EN MAKE (Versión activa y limpia)
+// URL DE TU WEBHOOK EN MAKE
 const WEBHOOK_URL = 'https://hook.us2.make.com/hgg9bij584ausnbbm2nwxd20e211ypsl';
 
 function dispararWebhookMake(tipoEvento, datos) {
@@ -48,10 +48,10 @@ function dispararWebhookMake(tipoEvento, datos) {
     });
 }
 
-// Regex para validación robusta de contraseñas: Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.
+// Regex para validación robusta de contraseñas
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
-// Inicializar Base de Datos SQLite con ruta absoluta segura para producción
+// Inicializar Base de Datos SQLite
 const dbPath = path.join(__dirname, 'turismo.db');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) console.error('Error al abrir DB', err.message);
@@ -102,44 +102,46 @@ db.serialize(() => {
         criticidad TEXT
     )`);
 
-    // Semilla de usuarios por defecto con los nuevos roles
+    // Semilla de usuarios por defecto con roles estrictos
     db.get("SELECT COUNT(*) as count FROM usuarios", async (err, row) => {
         if (row && row.count === 0) {
+            const passSuperAdmin = await bcrypt.hash('SuperAdmin123*', 10);
             const passAdmin = await bcrypt.hash('Admin123*', 10);
             const passAuditor = await bcrypt.hash('Auditor123*', 10);
-            const passGestor = await bcrypt.hash('Gestor123*', 10);
             const passTurista = await bcrypt.hash('Turista123*', 10);
 
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Super Administrador', 'admin@usb.edu.co', passAdmin, 'super_admin']);
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Carlos Auditor', 'auditor@usb.edu.co', passAuditor, 'auditor']);
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Carlos Gestor (DMO)', 'gestor@usb.edu.co', passGestor, 'dmo']);
+            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Super Administrador', 'superadmin@usb.edu.co', passSuperAdmin, 'super_admin']);
+            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Carlos Administrador', 'admin@usb.edu.co', passAdmin, 'admin']);
+            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Andrea Auditor', 'auditor@usb.edu.co', passAuditor, 'auditor']);
             db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Laura Turista', 'turista@gmail.com', passTurista, 'turista']);
         }
     });
 
-    // Semilla de destinos turísticos y alojamientos
+    // Semilla de destinos turísticos con precios realistas orientados a carro, moto y a pie
     db.get("SELECT COUNT(*) as count FROM destinos_turisticos", (err, row) => {
         if (row && row.count === 0) {
             const destinos = [
-                ['col01', 'Cerro de Monserrate', 'Bogotá: Santuario histórico y mirador.', 'historia', 3000, 1800, 25000, 95000, 1150000, 4.6058, -74.0558, 'Moderado'],
-                ['col02', 'Piedra del Peñol y Guatapé', 'Antioquia: Monolito gigante y embalse.', 'aventura', 2500, 1600, 22000, 88000, 1020000, 6.2244, -75.1606, 'Alerta Moderada'],
-                ['col03', 'Cristo Rey y San Antonio', 'Cali: Monumento y barrio tradicional.', 'cultura', 1500, 700, 12000, 49000, 580000, 3.4419, -76.5597, 'Seguro'],
-                ['col04', 'Parque Arví y Metrocable', 'Medellín: Parque ecoturístico de alta montaña.', 'naturaleza', 2000, 900, 15000, 60000, 720000, 6.2842, -75.5028, 'Seguro'],
-                ['col05', 'La Candelaria y Museo del Oro', 'Bogotá: Centro colonial histórico.', 'historia', 2500, 1200, 18000, 72000, 850000, 4.6014, -74.0721, 'Moderado'],
-                ['col06', 'Santuario de Las Lajas', 'Ipiales: Basílica en el cañón.', 'historia', 1800, 600, 9500, 38000, 450000, 0.8114, -77.5878, 'Seguro']
+                ['col01', 'Cerro de Monserrate', 'Bogotá D.C.: Santuario histórico (Asequible a pie, en funicular o teleférico).', 'historia', 3000, 1800, 25000, 95000, 1150000, 4.6058, -74.0558, 'Moderado'],
+                ['col02', 'Piedra del Peñol y Guatapé', 'Antioquia: Monolito gigante (Ideal en carro o moto con parqueaderos económicos).', 'aventura', 2500, 1600, 22000, 88000, 1020000, 6.2244, -75.1606, 'Alerta Moderada'],
+                ['col03', 'Parque Nacional Natural El Cocuy', 'Boyacá: Cumbres glaciares (Ruta de montaña para vehículos 4x4 o transporte especializado).', 'aventura', 1000, 300, 4000, 15000, 180000, 6.4719, -72.3161, 'Seguro'],
+                ['col04', 'Parque Nacional Natural Tayrona', 'Magdalena: Playas y senderos ecológicos aptos para caminantes.', 'naturaleza', 4000, 2200, 30000, 110000, 1300000, 11.3186, -74.0863, 'Moderado'],
+                ['col05', 'Valle del Cocora y Salento', 'Quindío: Recorridos en willys tradicionales, motos o caminatas.', 'naturaleza', 3500, 2100, 28000, 99000, 1200000, 4.6375, -75.5714, 'Seguro'],
+                ['col06', 'Cristo Rey y San Antonio', 'Cali: Monumento accesible en moto o vehículo particular.', 'cultura', 1500, 700, 12000, 49000, 580000, 3.4419, -76.5597, 'Seguro']
             ];
             const stmt = db.prepare("INSERT INTO destinos_turisticos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             destinos.forEach(d => stmt.run(d));
             stmt.finalize();
 
+            // Precios de hospedaje realistas ajustados a pernoctación en Colombia (COP)
             const hospedajes = [
-                ['col01', 'Hotel Dann Avenida 19', 'Hotel', '$180.000'],
-                ['col01', 'Casa de Huéspedes Monserrate', 'Hostal', '$90.000'],
-                ['col02', 'Bicentenario Hotel Guatapé', 'Hotel Boutique', '$250.000'],
-                ['col03', 'Hotel Movich Intercontinental Cali', 'Hotel 5 Estrellas', '$320.000'],
-                ['col04', 'Hotel Parque Arví Ecoresort', 'Ecoresort', '$290.000'],
-                ['col05', 'Hotel de la Opera Candelaria', 'Histórico', '$310.000'],
-                ['col06', 'Hotel Las Lajas Sanctuario', 'Hotel', '$140.000']
+                ['col01', 'Hotel Centro Colonial Bogotá', 'Hotel', '$95.000'],
+                ['col01', 'Hostal Mochilero Candelaria', 'Hostal (Ideal caminantes)', '$45.000'],
+                ['col02', 'Bicentenario Hotel Guatapé', 'Hotel Boutique', '$130.000'],
+                ['col02', 'Glamping Embalse Guatapé', 'Glamping', '$190.000'],
+                ['col03', 'Cabañas Nevado El Cocuy', 'Cabaña', '$110.000'],
+                ['col04', 'Tayrona Eco-Camping', 'Camping / Económico', '$55.000'],
+                ['col05', 'Finca Hotel Cafetera Salento', 'Finca Tradicional', '$120.000'],
+                ['col06', 'Hotel Movich Cali', 'Hotel 4 Estrellas', '$160.000']
             ];
             const stmtH = db.prepare("INSERT INTO hospedajes (id_destino, nombre_hospedaje, tipo, precio_noche) VALUES (?, ?, ?, ?)");
             hospedajes.forEach(h => stmtH.run(h));
@@ -148,22 +150,21 @@ db.serialize(() => {
     });
 });
 
-// API: Registro de Usuario con validación estricta de contraseña
+// API: Registro de Usuario con validación estricta
 app.post('/api/auth/registro', async (req, res) => {
     const { nombre, email, password, rol } = req.body;
     
     if (!passwordRegex.test(password)) {
         return res.status(400).json({ 
-            error: 'La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula, un número y un carácter especial.' 
+            error: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.' 
         });
     }
 
     try {
         const passwordHash = await bcrypt.hash(password, 10);
-        const rolAsignado = ['super_admin', 'auditor', 'dmo', 'turista'].includes(rol) ? rol : 'turista';
-
+        // Por seguridad, los registros públicos siempre entran como 'turista'
         db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`,
-            [nombre, email, passwordHash, rolAsignado],
+            [nombre, email, passwordHash, 'turista'],
             function(err) {
                 if (err) return res.status(400).json({ error: 'El correo ya está registrado.' });
                 
@@ -198,30 +199,34 @@ app.post('/api/auth/recuperar-password', (req, res) => {
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetExpires = new Date(Date.now() + 3600000).toISOString(); // Vigencia 1 hora
+        const resetExpires = new Date(Date.now() + 3600000).toISOString();
 
         db.run(`UPDATE usuarios SET reset_token = ?, reset_expires = ? WHERE email = ?`, [resetToken, resetExpires, email], (errUpdate) => {
             if (errUpdate) return res.status(500).json({ error: 'Error al procesar la recuperación.' });
+
+            const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+            const host = req.get('host');
+            const enlaceUrl = `${protocol}://${host}/reset.html?token=${resetToken}&email=${email}`;
 
             dispararWebhookMake('RECUPERAR_PASSWORD', { 
                 nombre: user.nombre, 
                 email: user.email, 
                 token: resetToken,
-                enlace: `http://localhost:3000/reset.html?token=${resetToken}&email=${email}`
+                enlace: enlaceUrl
             });
 
-            res.json({ success: true, message: 'Correo de recuperación enviado exitosamente.' });
+            res.json({ success: true, message: 'Correo de recuperación enviado exitosamente a través de Make.' });
         });
     });
 });
 
-// API: Restablecer Contraseña con Token
+// API: Restablecer Contraseña
 app.post('/api/auth/reset-password', async (req, res) => {
     const { email, token, nuevaPassword } = req.body;
 
     if (!passwordRegex.test(nuevaPassword)) {
         return res.status(400).json({ 
-            error: 'La nueva contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.' 
+            error: 'La nueva contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.' 
         });
     }
 
@@ -246,7 +251,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     });
 });
 
-// API: Obtener destinos turísticos y sus hospedajes
+// API: Obtener destinos turísticos y hospedajes
 app.get('/api/destinos', (req, res) => {
     db.all("SELECT * FROM destinos_turisticos", [], (err, destinos) => {
         db.all("SELECT * FROM hospedajes", [], (errH, hospedajes) => {
@@ -259,7 +264,7 @@ app.get('/api/destinos', (req, res) => {
     });
 });
 
-// API: Planificador / Recomendador de Rutas
+// API: Planificador de Rutas
 app.post('/api/turista/recomendar', (req, res) => {
     const { preferencia, usuarioNombre, usuarioEmail } = req.body;
     db.all("SELECT * FROM destinos_turisticos WHERE categoria = ?", [preferencia], (err, destinos) => {
@@ -273,26 +278,33 @@ app.post('/api/turista/recomendar', (req, res) => {
     });
 });
 
-// API: Cotizador de Viaje
+// API: Cotizador de Viaje (Realista adaptado a carro, moto y a pie)
 app.post('/api/turista/cotizar', (req, res) => {
-    const { usuarioNombre, usuarioEmail, destinoNombre, personas, dias } = req.body;
-    const costoTotal = Number(personas) * Number(dias) * 120000;
+    const { usuarioNombre, usuarioEmail, destinoNombre, personas, dias, modoTransporte } = req.body;
+    
+    // Tarifa base diaria por persona según transporte (combustible/peajes vs transporte público/caminata)
+    let costoBaseDiario = 70000; 
+    if (modoTransporte === 'Carro') costoBaseDiario = 110000;
+    if (modoTransporte === 'Moto') costoBaseDiario = 60000;
+    if (modoTransporte === 'A pie') costoBaseDiario = 40000;
+
+    const costoTotal = Number(personas) * Number(dias) * costoBaseDiario;
     
     dispararWebhookMake('COTIZACION_VIAJE', { 
         nombre: usuarioNombre || 'Turista', 
         email: usuarioEmail || 'N/A', 
-        destino: `${destinoNombre} (${personas} pers, ${dias} días - Total: $${costoTotal.toLocaleString()} COP)` 
+        destino: `${destinoNombre} (${personas} pers, ${dias} días, Modo: ${modoTransporte || 'Carro'} - Total: $${costoTotal.toLocaleString()} COP)` 
     });
 
     res.json({ success: true, costoTotal });
 });
 
-// API: Actualizar Aforo (Solo DMO y Super Admin)
+// API: Actualizar Aforo (Admin y Super Admin)
 app.post('/api/destinos/actualizar', (req, res) => {
     const { id_destino, afluencia_actual, usuarioEmail, rolUsuario } = req.body;
     
-    if (rolUsuario !== 'dmo' && rolUsuario !== 'super_admin') {
-        return res.status(403).json({ error: 'Acceso denegado. Se requiere rol DMO o Super Administrador.' });
+    if (rolUsuario !== 'admin' && rolUsuario !== 'super_admin') {
+        return res.status(403).json({ error: 'Acceso denegado. Se requiere rol Administrador o Super Administrador.' });
     }
 
     db.run("UPDATE destinos_turisticos SET afluencia_actual = ? WHERE id_destino = ?", [afluencia_actual, id_destino], function(err) {
@@ -301,9 +313,58 @@ app.post('/api/destinos/actualizar', (req, res) => {
         db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
             [fechaIso, usuarioEmail, `Actualización aforo destino ${id_destino} a ${afluencia_actual}`, 'MEDIA']);
         
-        dispararWebhookMake('ACTUALIZACION_AFORO', { nombre: 'Gestor DMO', email: usuarioEmail, destino: `Aforo actualizado destino ID: ${id_destino} a ${afluencia_actual}` });
+        dispararWebhookMake('ACTUALIZACION_AFORO', { nombre: 'Administrador', email: usuarioEmail, destino: `Aforo actualizado destino ID: ${id_destino} a ${afluencia_actual}` });
 
         res.json({ success: true, message: 'Aforo actualizado y registrado en auditoría.' });
+    });
+});
+
+// API: Actualizar o Agregar Precios de Hospedaje (Exclusivo Admin y Super Admin)
+app.post('/api/admin/hospedajes/actualizar', (req, res) => {
+    const { id_destino, nombre_hospedaje, tipo, precio_noche, rolUsuario, usuarioEmail } = req.body;
+    if (rolUsuario !== 'admin' && rolUsuario !== 'super_admin') {
+        return res.status(403).json({ error: 'No autorizado para modificar precios.' });
+    }
+
+    db.run(`INSERT INTO hospedajes (id_destino, nombre_hospedaje, tipo, precio_noche) VALUES (?, ?, ?, ?)`, 
+        [id_destino, nombre_hospedaje, tipo, precio_noche], function(err) {
+        if (err) return res.status(500).json({ error: 'Error al agregar precio.' });
+        
+        const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+            [fechaIso, usuarioEmail, `Nuevo hospedaje/precio añadido: ${nombre_hospedaje} (${precio_noche})`, 'ALTA']);
+
+        res.json({ success: true, message: 'Precio y hospedaje actualizado correctamente.' });
+    });
+});
+
+// API: Obtener lista de usuarios (Exclusivo Super Admin)
+app.get('/api/admin/usuarios', (req, res) => {
+    const userRole = req.headers['x-user-role'];
+    if (userRole !== 'super_admin') {
+        return res.status(403).json({ error: 'Acceso restringido al Super Administrador.' });
+    }
+    db.all("SELECT id_usuario, nombre, email, rol FROM usuarios", [], (err, usuarios) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(usuarios);
+    });
+});
+
+// API: Cambiar Rol o Quitar Permisos a un Usuario (Exclusivo Super Admin)
+app.post('/api/admin/usuarios/rol', (req, res) => {
+    const { id_usuario, nuevoRol, rolUsuario, usuarioEmail } = req.body;
+    if (rolUsuario !== 'super_admin') {
+        return res.status(403).json({ error: 'Solo el Super Administrador puede otorgar o revocar permisos.' });
+    }
+
+    db.run(`UPDATE usuarios SET rol = ? WHERE id_usuario = ?`, [nuevoRol, id_usuario], function(err) {
+        if (err) return res.status(500).json({ error: 'Error al actualizar permisos.' });
+
+        const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+            [fechaIso, usuarioEmail, `Modificación de privilegios ID usuario ${id_usuario} a rol: ${nuevoRol}`, 'CRITICA']);
+
+        res.json({ success: true, message: 'Permisos de usuario actualizados correctamente.' });
     });
 });
 
@@ -314,18 +375,6 @@ app.get('/api/auditoria/logs', (req, res) => {
         return res.status(403).json({ error: 'Acceso restringido. Solo Auditores y Super Administradores.' });
     }
     db.all("SELECT * FROM auditoria_logs ORDER BY id_log DESC LIMIT 50", [], (err, logs) => res.json(logs));
-});
-
-// API: Listar usuarios (Exclusivo Super Admin)
-app.get('/api/admin/usuarios', (req, res) => {
-    const userRole = req.headers['x-user-role'];
-    if (userRole !== 'super_admin') {
-        return res.status(403).json({ error: 'Acceso exclusivo para Super Administrador.' });
-    }
-    db.all("SELECT id_usuario, nombre, email, rol FROM usuarios", [], (err, usuarios) => {
-        if (err) return res.status(403).json({ error: err.message });
-        res.json(usuarios);
-    });
 });
 
 const PORT = process.env.PORT || 3000;
