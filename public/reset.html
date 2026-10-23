@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Restablecer Contraseña - Turismo Inteligente</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #1e293b; padding: 30px; border-radius: 10px; width: 350px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #334155; border: 1px solid #475569; color: white; border-radius: 5px; }
+        button { width: 100%; padding: 10px; background: #ef4444; border: none; color: white; font-weight: bold; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #dc2626; }
+        .info { font-size: 12px; color: #94a3b8; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Nueva Contraseña</h2>
+        <p class="info">Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.</p>
+        <input type="password" id="nuevaPassword" placeholder="Nueva contraseña">
+        <button onclick="cambiarPassword()">Actualizar Contraseña</button>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const email = urlParams.get('email');
+
+        function cambiarPassword() {
+            const nuevaPassword = document.getElementById('nuevaPassword').value;
+
+            fetch('/api/auth/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, token, nuevaPassword })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("¡Contraseña actualizada con éxito! Ahora puedes iniciar sesión.");
+                    window.location.href = '/index.html';
+                } else {
+                    alert(data.error || "Ocurrió un error.");
+                }
+            })
+            .catch(err => alert("Error de red."));
+        }
+    </script>
+</body>
+</html>

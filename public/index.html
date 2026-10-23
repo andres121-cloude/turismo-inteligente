@@ -3,71 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Tourism - Colombia</title>
+    <title>Turismo Inteligente - Colombia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans antialiased flex items-center justify-center min-h-screen">
+<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen">
 
-    <div class="max-w-5xl w-full mx-auto p-4">
-        
-        <!-- AUTENTICACIÓN -->
-        <div id="auth-container" class="bg-slate-950 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md mx-auto">
-            <div class="text-center mb-6">
-                <i class="fa-solid fa-mountain-sun text-emerald-400 text-4xl mb-2"></i>
-                <h1 class="text-2xl font-bold">Turismo Inteligente</h1>
-                <p class="text-xs text-slate-400 mt-1">Monserrate, Guatapé, Cali y más</p>
+    <!-- NAVBAR SUPERIOR PÚBLICA / PRIVADA -->
+    <header class="bg-slate-950 border-b border-slate-800 p-4 sticky top-0 z-50 shadow">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-mountain-sun text-emerald-400 text-2xl"></i>
+                <h1 class="text-lg font-bold tracking-wide">Turismo Inteligente <span class="text-xs text-blue-400 font-normal">Colombia</span></h1>
             </div>
-
-            <div class="flex border-b border-slate-800 mb-6">
-                <button onclick="mostrarTab('login')" id="tab-login-btn" class="flex-1 pb-2 font-bold text-sm text-blue-400 border-b-2 border-blue-500">Iniciar Sesión</button>
-                <button onclick="mostrarTab('registro')" id="tab-registro-btn" class="flex-1 pb-2 font-medium text-sm text-slate-400">Registrarse</button>
+            
+            <div id="navbar-auth-section" class="flex items-center space-x-3">
+                <!-- Se llena dinámicamente según si hay sesión iniciada -->
             </div>
-
-            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Correo Electrónico:</label>
-                    <input type="email" id="login-email" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="ejemplo@correo.com">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Contraseña:</label>
-                    <input type="password" id="login-pass" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="••••••••">
-                </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg text-sm transition">Iniciar Sesión</button>
-                <p class="text-[11px] text-slate-500 text-center mt-3">Demo Gestor: <b>gestor@usb.edu.co</b> / <b>gestor123</b></p>
-            </form>
-
-            <form id="form-registro" onsubmit="handleRegistro(event)" class="space-y-4 hidden">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Nombre Completo:</label>
-                    <input type="text" id="reg-nombre" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="Tu Nombre">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Correo Electrónico:</label>
-                    <input type="email" id="reg-email" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="ejemplo@correo.com">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Contraseña:</label>
-                    <input type="password" id="reg-pass" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="••••••••">
-                </div>
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg text-sm transition">Registrarse</button>
-            </form>
         </div>
+    </header>
 
-        <!-- APLICACIÓN PRINCIPAL -->
-        <div id="app-container" class="hidden space-y-6">
-            <header class="flex justify-between items-center border-b border-slate-800 pb-4 bg-slate-950 p-4 rounded-xl shadow">
+    <div class="max-w-6xl mx-auto p-4 space-y-6 mt-4">
+        
+        <!-- APLICACIÓN PRINCIPAL (VISIBLE DESDE EL INICIO - VISTA LIBRE) -->
+        <div id="app-container" class="space-y-6">
+            
+            <!-- PANEL DE CONTROL / BIENVENIDA DINÁMICA -->
+            <div id="panel-bienvenida" class="bg-slate-950 border border-slate-800 p-4 rounded-xl shadow flex justify-between items-center hidden">
                 <div>
-                    <h2 id="user-welcome" class="font-bold text-lg text-emerald-400">Bienvenido</h2>
-                    <p class="text-xs text-slate-400">Rol activo: <span id="user-role-badge" class="uppercase font-bold"></span></p>
+                    <h2 id="user-welcome" class="font-bold text-base text-emerald-400">Bienvenido</h2>
+                    <p class="text-xs text-slate-400">Rol activo: <span id="user-role-badge" class="uppercase font-bold text-blue-300"></span></p>
                 </div>
-                <button onclick="cerrarSesion()" class="bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">
-                    <i class="fa-solid fa-right-from-bracket mr-1"></i> Cerrar Sesión
-                </button>
-            </header>
+            </div>
 
-            <!-- VISTA TURISTA -->
-            <div id="panel-turista" class="space-y-6 hidden">
+            <!-- VISTA TURISTA / PÚBLICA: Planificador y Cotizador -->
+            <div id="panel-turista" class="space-y-6">
                 
                 <!-- Planificador de Rutas -->
                 <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl shadow-xl">
@@ -87,7 +57,7 @@
                     <div id="resultado-rec" class="mt-4 hidden bg-slate-900 p-5 rounded-xl border border-slate-800 text-sm space-y-3"></div>
                 </div>
 
-                <!-- Módulo de Cotización Profesional -->
+                <!-- Módulo de Cotización -->
                 <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl shadow-xl">
                     <h3 class="text-base font-bold mb-2 text-emerald-400"><i class="fa-solid fa-calculator"></i> Cotizador de Viaje & Estancia</h3>
                     <p class="text-xs text-slate-400 mb-4">Calcula el costo estimado de tu viaje ingresando los detalles de tu itinerario:</p>
@@ -122,7 +92,7 @@
 
             </div>
 
-            <!-- VISTA GESTOR DMO -->
+            <!-- VISTA GESTOR DMO / SUPER ADMIN -->
             <div id="panel-dmo" class="space-y-6 hidden">
                 <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl shadow-xl">
                     <h3 class="text-base font-bold mb-2 text-purple-400"><i class="fa-solid fa-sliders"></i> Panel Operativo DMO & Control de Aforos</h3>
@@ -137,14 +107,18 @@
                         </div>
                         <button onclick="actualizarAforo()" class="bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded-lg text-sm font-medium">Actualizar en BD</button>
                     </div>
-                    <div class="border-t border-slate-800 pt-4">
-                        <h4 class="text-xs font-bold text-slate-300 mb-2"><i class="fa-solid fa-shield-halved text-emerald-400"></i> Registro de Actividad y Auditoría (ISO 27001)</h4>
-                        <div id="logs-container" class="bg-slate-900 p-3 rounded-lg border border-slate-800 text-[11px] max-h-36 overflow-y-auto space-y-1 font-mono text-slate-300"></div>
-                    </div>
                 </div>
             </div>
 
-            <!-- CATÁLOGO GENERAL -->
+            <!-- VISTA AUDITOR / SUPER ADMIN (LOGS) -->
+            <div id="panel-auditor" class="space-y-6 hidden">
+                <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                    <h4 class="text-sm font-bold text-slate-200 mb-2"><i class="fa-solid fa-shield-halved text-emerald-400"></i> Registro de Actividad y Auditoría (ISO 27001)</h4>
+                    <div id="logs-container" class="bg-slate-900 p-3 rounded-lg border border-slate-800 text-[11px] max-h-48 overflow-y-auto space-y-1 font-mono text-slate-300"></div>
+                </div>
+            </div>
+
+            <!-- CATÁLOGO GENERAL DE DESTINOS -->
             <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl shadow-xl">
                 <h3 class="text-base font-bold mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-landmark text-emerald-400"></i> Destinos Emblemáticos de Colombia
@@ -156,10 +130,93 @@
 
     </div>
 
-    <script>
-        let usuarioActual = null;
+    <!-- MODAL DE AUTENTICACIÓN (LOGIN / REGISTRO) -->
+    <div id="auth-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-slate-950 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4 relative">
+            <button onclick="cerrarModalAuth()" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-mountain-sun text-emerald-400 text-4xl mb-2"></i>
+                <h2 id="modal-titulo" class="text-2xl font-bold">Iniciar Sesión</h2>
+            </div>
 
-        function mostrarTab(tab) {
+            <div class="flex border-b border-slate-800 mb-6">
+                <button onclick="cambiarTabModal('login')" id="tab-login-btn" class="flex-1 pb-2 font-bold text-sm text-blue-400 border-b-2 border-blue-500">Iniciar Sesión</button>
+                <button onclick="cambiarTabModal('registro')" id="tab-registro-btn" class="flex-1 pb-2 font-medium text-sm text-slate-400">Registrarse</button>
+            </div>
+
+            <!-- Formulario Login -->
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Correo Electrónico:</label>
+                    <input type="email" id="login-email" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="ejemplo@correo.com">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Contraseña:</label>
+                    <input type="password" id="login-pass" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg text-sm transition">Iniciar Sesión</button>
+                
+                <div class="text-center mt-3">
+                    <button type="button" onclick="recuperarPasswordPrompt()" class="text-xs text-blue-400 hover:underline">¿Olvidaste tu contraseña?</button>
+                </div>
+            </form>
+
+            <!-- Formulario Registro -->
+            <form id="form-registro" onsubmit="handleRegistro(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Nombre Completo:</label>
+                    <input type="text" id="reg-nombre" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="Tu Nombre">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Correo Electrónico:</label>
+                    <input type="email" id="reg-email" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="ejemplo@correo.com">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Contraseña (Mín. 8 caracteres, mayúscula, minúscula, número y símbolo):</label>
+                    <input type="password" id="reg-pass" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg text-sm transition">Registrarse</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let usuarioActual = JSON.parse(localStorage.getItem('usuarioTurismo')) || null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            renderNavbar();
+            aplicarPermisosRoles();
+            cargarDestinos();
+        });
+
+        function renderNavbar() {
+            const nav = document.getElementById('navbar-auth-section');
+            if (usuarioActual) {
+                nav.innerHTML = `
+                    <span class="text-xs text-slate-300 hidden md:inline">👤 <b>${usuarioActual.nombre}</b> (${usuarioActual.rol})</span>
+                    <button onclick="cerrarSesion()" class="bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                        <i class="fa-solid fa-right-from-bracket mr-1"></i> Salir
+                    </button>
+                `;
+            } else {
+                nav.innerHTML = `
+                    <button onclick="abrirModalAuth('login')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-medium transition border border-slate-700">Iniciar Sesión</button>
+                    <button onclick="abrirModalAuth('registro')" class="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-medium transition">Registrarse</button>
+                `;
+            }
+        }
+
+        function abrirModalAuth(tipo) {
+            document.getElementById('auth-modal').classList.remove('hidden');
+            cambiarTabModal(tipo);
+        }
+
+        function cerrarModalAuth() {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
+        function cambiarTabModal(tab) {
             if (tab === 'login') {
                 document.getElementById('form-login').classList.remove('hidden');
                 document.getElementById('form-registro').classList.add('hidden');
@@ -181,7 +238,16 @@
                 body: JSON.stringify({ email: document.getElementById('login-email').value, password: document.getElementById('login-pass').value })
             });
             const data = await res.json();
-            if (data.success) { usuarioActual = data.usuario; iniciarSesionExito(); } else { alert(data.error); }
+            if (data.success) {
+                usuarioActual = data.usuario;
+                localStorage.setItem('usuarioTurismo', JSON.stringify(usuarioActual));
+                cerrarModalAuth();
+                renderNavbar();
+                aplicarPermisosRoles();
+                alert(`¡Bienvenido de nuevo, ${usuarioActual.nombre}!`);
+            } else {
+                alert(data.error);
+            }
         }
 
         async function handleRegistro(e) {
@@ -189,26 +255,66 @@
             const res = await fetch('/api/auth/registro', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nombre: document.getElementById('reg-nombre').value, email: document.getElementById('reg-email').value, password: document.getElementById('reg-pass').value, rol: 'turista' })
+                body: JSON.stringify({ 
+                    nombre: document.getElementById('reg-nombre').value, 
+                    email: document.getElementById('reg-email').value, 
+                    password: document.getElementById('reg-pass').value, 
+                    rol: 'turista' 
+                })
             });
             const data = await res.json();
-            if (data.success) { alert(data.message); mostrarTab('login'); } else { alert(data.error); }
-        }
-
-        function iniciarSesionExito() {
-            document.getElementById('auth-container').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            document.getElementById('user-welcome').innerText = `Hola, ${usuarioActual.nombre}`;
-            document.getElementById('user-role-badge').innerText = usuarioActual.rol;
-            if (usuarioActual.rol === 'dmo') { document.getElementById('panel-dmo').classList.remove('hidden'); cargarLogsAuditoria(); }
-            else { document.getElementById('panel-turista').classList.remove('hidden'); }
-            cargarDestinos();
+            if (data.success) {
+                alert(data.message);
+                cambiarTabModal('login');
+            } else {
+                alert(data.error);
+            }
         }
 
         function cerrarSesion() {
             usuarioActual = null;
-            document.getElementById('app-container').classList.add('hidden');
-            document.getElementById('auth-container').classList.remove('hidden');
+            localStorage.removeItem('usuarioTurismo');
+            renderNavbar();
+            aplicarPermisosRoles();
+            window.location.reload();
+        }
+
+        function aplicarPermisosRoles() {
+            const panelBienvenida = document.getElementById('panel-bienvenida');
+            const panelDmo = document.getElementById('panel-dmo');
+            const panelAuditor = document.getElementById('panel-auditor');
+
+            if (usuarioActual) {
+                panelBienvenida.classList.remove('hidden');
+                document.getElementById('user-welcome').innerText = `Hola, ${usuarioActual.nombre}`;
+                document.getElementById('user-role-badge').innerText = usuarioActual.rol;
+
+                // Control según roles
+                if (usuarioActual.rol === 'dmo' || usuarioActual.rol === 'super_admin') {
+                    panelDmo.classList.remove('hidden');
+                }
+                if (usuarioActual.rol === 'auditor' || usuarioActual.rol === 'super_admin') {
+                    panelAuditor.classList.remove('hidden');
+                    cargarLogsAuditoria();
+                }
+            } else {
+                panelBienvenida.classList.add('hidden');
+                panelDmo.classList.add('hidden');
+                panelAuditor.classList.add('hidden');
+            }
+        }
+
+        async function recuperarPasswordPrompt() {
+            const email = prompt("Ingresa tu correo electrónico registrado:");
+            if (!email) return;
+
+            const res = await fetch('/api/auth/recuperar-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await res.json();
+            alert(data.message || "Se han enviado las instrucciones.");
         }
 
         async function cargarDestinos() {
@@ -250,10 +356,13 @@
 
         async function buscarRecomendacion() {
             const preferencia = document.getElementById('turista-pref').value;
+            const nombreUser = usuarioActual ? usuarioActual.nombre : 'Turista Invitado';
+            const emailUser = usuarioActual ? usuarioActual.email : 'invitado@turismo.co';
+
             const res = await fetch('/api/turista/recomendar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ preferencia, usuarioNombre: usuarioActual.nombre, usuarioEmail: usuarioActual.email })
+                body: JSON.stringify({ preferencia, usuarioNombre: nombreUser, usuarioEmail: emailUser })
             });
             const data = await res.json();
             const box = document.getElementById('resultado-rec');
@@ -271,34 +380,42 @@
             const destinoNombre = document.getElementById('cotiza-destino').value;
             const personas = document.getElementById('cotiza-personas').value;
             const dias = document.getElementById('cotiza-dias').value;
+            const nombreUser = usuarioActual ? usuarioActual.nombre : 'Turista Invitado';
+            const emailUser = usuarioActual ? usuarioActual.email : 'invitado@turismo.co';
 
             const res = await fetch('/api/turista/cotizar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usuarioNombre: usuarioActual.nombre, usuarioEmail: usuarioActual.email, destinoNombre, personas, dias })
+                body: JSON.stringify({ usuarioNombre: nombreUser, usuarioEmail: emailUser, destinoNombre, personas, dias })
             });
             const data = await res.json();
             const boxCotiza = document.getElementById('resultado-cotiza');
             boxCotiza.classList.remove('hidden');
-            boxCotiza.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-sm mr-1"></i> Cotización exitosa para <b>${destinoNombre}</b> (${personas} personas, ${dias} días). Total estimado: <b>$${data.costoTotal.toLocaleString()} COP</b>. (Reporte enviado a Google Sheets)`;
+            boxCotiza.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-sm mr-1"></i> Cotización para <b>${destinoNombre}</b> (${personas} pers, ${dias} días). Total estimado: <b>$${data.costoTotal.toLocaleString()} COP</b>.`;
         }
 
         async function actualizarAforo() {
+            if (!usuarioActual) return alert("Debe iniciar sesión como DMO o Administrador.");
             const id_destino = document.getElementById('select-dest').value;
             const afluencia_actual = parseInt(document.getElementById('input-afluencia').value);
+            
             const res = await fetch('/api/destinos/actualizar', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_destino, afluencia_actual, usuarioEmail: usuarioActual.email })
+                headers: { 'Content-Type': 'application/json', 'x-user-role': usuarioActual.rol },
+                body: JSON.stringify({ id_destino, afluencia_actual, usuarioEmail: usuarioActual.email, rolUsuario: usuarioActual.rol })
             });
             const data = await res.json();
-            alert(data.message);
+            alert(data.message || data.error);
             cargarDestinos();
-            cargarLogsAuditoria();
+            if (usuarioActual.rol === 'auditor' || usuarioActual.rol === 'super_admin') cargarLogsAuditoria();
         }
 
         async function cargarLogsAuditoria() {
-            const res = await fetch('/api/auditoria/logs');
+            if (!usuarioActual) return;
+            const res = await fetch('/api/auditoria/logs', {
+                headers: { 'x-user-role': usuarioActual.rol }
+            });
+            if (res.status === 403) return;
             const logs = await res.json();
             document.getElementById('logs-container').innerHTML = logs.map(l => `<div>[${l.fecha_hora}] ${l.usuario} -> ${l.accion}</div>`).join('');
         }
