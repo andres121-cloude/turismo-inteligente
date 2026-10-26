@@ -58,7 +58,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
     else console.log('Conectado a la Base de Datos SQLite en:', dbPath);
 });
 
-// Crear Tablas e Insertar Datos Semilla
+// Crear Tablas y Asegurar Columnas de Recuperación
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,7 +68,11 @@ db.serialize(() => {
         rol TEXT NOT NULL,
         reset_token TEXT,
         reset_expires TEXT
-    )`);
+    )`, () => {
+        // Migración segura por si la tabla ya existía sin estas columnas
+        db.run(`ALTER TABLE usuarios ADD COLUMN reset_token TEXT`, () => {});
+        db.run(`ALTER TABLE usuarios ADD COLUMN reset_expires TEXT`, () => {});
+    });
 
     db.run(`CREATE TABLE IF NOT EXISTS destinos_turisticos (
         id_destino TEXT PRIMARY KEY,
@@ -117,7 +121,7 @@ db.serialize(() => {
         }
     });
 
-    // Semilla de destinos turísticos con precios realistas orientados a carro, moto y a pie
+    // Semilla de destinos turísticos
     db.get("SELECT COUNT(*) as count FROM destinos_turisticos", (err, row) => {
         if (row && row.count === 0) {
             const destinos = [
@@ -132,7 +136,6 @@ db.serialize(() => {
             destinos.forEach(d => stmt.run(d));
             stmt.finalize();
 
-            // Precios de hospedaje realistas ajustados a pernoctación en Colombia (COP)
             const hospedajes = [
                 ['col01', 'Hotel Centro Colonial Bogotá', 'Hotel', '$95.000'],
                 ['col01', 'Hostal Mochilero Candelaria', 'Hostal (Ideal caminantes)', '$45.000'],
@@ -150,9 +153,9 @@ db.serialize(() => {
     });
 });
 
-// API: Registro de Usuario con validación estricta
+// API: Registro de Usuario
 app.post('/api/auth/registro', async (req, res) => {
-    const { nombre, email, password, rol } = req.body;
+    const { nombre, email, password } = req.body;
     
     if (!passwordRegex.test(password)) {
         return res.status(400).json({ 
@@ -162,7 +165,6 @@ app.post('/api/auth/registro', async (req, res) => {
 
     try {
         const passwordHash = await bcrypt.hash(password, 10);
-        // Por seguridad, los registros públicos siempre entran como 'turista'
         db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`,
             [nombre, email, passwordHash, 'turista'],
             function(err) {
@@ -202,7 +204,10 @@ app.post('/api/auth/recuperar-password', (req, res) => {
         const resetExpires = new Date(Date.now() + 3600000).toISOString();
 
         db.run(`UPDATE usuarios SET reset_token = ?, reset_expires = ? WHERE email = ?`, [resetToken, resetExpires, email], (errUpdate) => {
-            if (errUpdate) return res.status(500).json({ error: 'Error al procesar la recuperación.' });
+            if (errUpdate) {
+                console.error("Error SQL al guardar token:", errUpdate.message);
+                return res.status(500).json({ error: 'Error al procesar la recuperación.' });
+            }
 
             const protocol = req.headers['x-forwarded-proto'] || req.protocol;
             const host = req.get('host');
@@ -251,7 +256,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     });
 });
 
-// API: Obtener destinos turísticos y hospedajes
+// API: Obtener destinos y hospedajes
 app.get('/api/destinos', (req, res) => {
     db.all("SELECT * FROM destinos_turisticos", [], (err, destinos) => {
         db.all("SELECT * FROM hospedajes", [], (errH, hospedajes) => {
@@ -278,11 +283,9 @@ app.post('/api/turista/recomendar', (req, res) => {
     });
 });
 
-// API: Cotizador de Viaje (Realista adaptado a carro, moto y a pie)
+// API: Cotizador de Viaje
 app.post('/api/turista/cotizar', (req, res) => {
     const { usuarioNombre, usuarioEmail, destinoNombre, personas, dias, modoTransporte } = req.body;
-    
-    // Tarifa base diaria por persona según transporte (combustible/peajes vs transporte público/caminata)
     let costoBaseDiario = 70000; 
     if (modoTransporte === 'Carro') costoBaseDiario = 110000;
     if (modoTransporte === 'Moto') costoBaseDiario = 60000;
@@ -299,7 +302,7 @@ app.post('/api/turista/cotizar', (req, res) => {
     res.json({ success: true, costoTotal });
 });
 
-// API: Actualizar Aforo (Admin y Super Admin)
+// API: Actualizar Aforo
 app.post('/api/destinos/actualizar', (req, res) => {
     const { id_destino, afluencia_actual, usuarioEmail, rolUsuario } = req.body;
     
@@ -319,7 +322,7 @@ app.post('/api/destinos/actualizar', (req, res) => {
     });
 });
 
-// API: Actualizar o Agregar Precios de Hospedaje (Exclusivo Admin y Super Admin)
+// API: Actualizar Precios
 app.post('/api/admin/hospedajes/actualizar', (req, res) => {
     const { id_destino, nombre_hospedaje, tipo, precio_noche, rolUsuario, usuarioEmail } = req.body;
     if (rolUsuario !== 'admin' && rolUsuario !== 'super_admin') {
@@ -338,7 +341,7 @@ app.post('/api/admin/hospedajes/actualizar', (req, res) => {
     });
 });
 
-// API: Obtener lista de usuarios (Exclusivo Super Admin)
+// API: Listar Usuarios
 app.get('/api/admin/usuarios', (req, res) => {
     const userRole = req.headers['x-user-role'];
     if (userRole !== 'super_admin') {
@@ -350,7 +353,7 @@ app.get('/api/admin/usuarios', (req, res) => {
     });
 });
 
-// API: Cambiar Rol o Quitar Permisos a un Usuario (Exclusivo Super Admin)
+// API: Cambiar Rol
 app.post('/api/admin/usuarios/rol', (req, res) => {
     const { id_usuario, nuevoRol, rolUsuario, usuarioEmail } = req.body;
     if (rolUsuario !== 'super_admin') {
@@ -368,7 +371,7 @@ app.post('/api/admin/usuarios/rol', (req, res) => {
     });
 });
 
-// API: Obtener logs de auditoría (Exclusivo Auditor y Super Admin)
+// API: Obtener Logs
 app.get('/api/auditoria/logs', (req, res) => {
     const userRole = req.headers['x-user-role'];
     if (userRole !== 'auditor' && userRole !== 'super_admin') {
