@@ -48,7 +48,7 @@ function dispararWebhookMake(tipoEvento, datos) {
     });
 }
 
-// Regex para validación robusta de contraseñas
+// Regex para validación estricta de contraseñas
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
 // Inicializar Base de Datos SQLite
@@ -58,7 +58,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
     else console.log('Conectado a la Base de Datos SQLite en:', dbPath);
 });
 
-// Crear Tablas y Asegurar Columnas de Recuperación
+// Crear Tablas y Migraciones Seguras
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,12 +66,13 @@ db.serialize(() => {
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         rol TEXT NOT NULL,
+        estado_aprobacion TEXT DEFAULT 'aprobado',
         reset_token TEXT,
         reset_expires TEXT
     )`, () => {
-        // Migración segura por si la tabla ya existía sin estas columnas
         db.run(`ALTER TABLE usuarios ADD COLUMN reset_token TEXT`, () => {});
         db.run(`ALTER TABLE usuarios ADD COLUMN reset_expires TEXT`, () => {});
+        db.run(`ALTER TABLE usuarios ADD COLUMN estado_aprobacion TEXT DEFAULT 'aprobado'`, () => {});
     });
 
     db.run(`CREATE TABLE IF NOT EXISTS destinos_turisticos (
@@ -106,45 +107,53 @@ db.serialize(() => {
         criticidad TEXT
     )`);
 
-    // Semilla de usuarios por defecto con roles estrictos
+    // Inserción de tus cuentas reales con roles específicos y contraseñas cifradas
     db.get("SELECT COUNT(*) as count FROM usuarios", async (err, row) => {
         if (row && row.count === 0) {
-            const passSuperAdmin = await bcrypt.hash('SuperAdmin123*', 10);
-            const passAdmin = await bcrypt.hash('Admin123*', 10);
-            const passAuditor = await bcrypt.hash('Auditor123*', 10);
-            const passTurista = await bcrypt.hash('Turista123*', 10);
+            const passSuperAdmin = await bcrypt.hash('Buitre1022@', 10);
+            const passAdmin = await bcrypt.hash('1022326534', 10);
+            const passAuditor = await bcrypt.hash('1022326534', 10);
 
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Super Administrador', 'superadmin@usb.edu.co', passSuperAdmin, 'super_admin']);
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Carlos Administrador', 'admin@usb.edu.co', passAdmin, 'admin']);
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Andrea Auditor', 'auditor@usb.edu.co', passAuditor, 'auditor']);
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`, ['Laura Turista', 'turista@gmail.com', passTurista, 'turista']);
+            // 1. super_admin (buitragoandres702@gmail.com)
+            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`, 
+                ['Andrés SuperAdmin', 'buitragoandres702@gmail.com', passSuperAdmin, 'super_admin', 'aprobado']);
+            
+            // 2. admin (andresfelipebuitragoquintero@gmail.com)
+            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`, 
+                ['Andrés Felipe Admin', 'andresfelipebuitragoquintero@gmail.com', passAdmin, 'admin', 'aprobado']);
+            
+            // 3. auditor (pepitosaludos717@gmail.com)
+            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`, 
+                ['Pepito Auditor', 'pepitosaludos717@gmail.com', passAuditor, 'auditor', 'aprobado']);
         }
     });
 
-    // Semilla de destinos turísticos
+    // Semilla de destinos y hospedajes con precios realistas (Carro, Moto, A pie)
     db.get("SELECT COUNT(*) as count FROM destinos_turisticos", (err, row) => {
         if (row && row.count === 0) {
             const destinos = [
-                ['col01', 'Cerro de Monserrate', 'Bogotá D.C.: Santuario histórico (Asequible a pie, en funicular o teleférico).', 'historia', 3000, 1800, 25000, 95000, 1150000, 4.6058, -74.0558, 'Moderado'],
-                ['col02', 'Piedra del Peñol y Guatapé', 'Antioquia: Monolito gigante (Ideal en carro o moto con parqueaderos económicos).', 'aventura', 2500, 1600, 22000, 88000, 1020000, 6.2244, -75.1606, 'Alerta Moderada'],
-                ['col03', 'Parque Nacional Natural El Cocuy', 'Boyacá: Cumbres glaciares (Ruta de montaña para vehículos 4x4 o transporte especializado).', 'aventura', 1000, 300, 4000, 15000, 180000, 6.4719, -72.3161, 'Seguro'],
-                ['col04', 'Parque Nacional Natural Tayrona', 'Magdalena: Playas y senderos ecológicos aptos para caminantes.', 'naturaleza', 4000, 2200, 30000, 110000, 1300000, 11.3186, -74.0863, 'Moderado'],
-                ['col05', 'Valle del Cocora y Salento', 'Quindío: Recorridos en willys tradicionales, motos o caminatas.', 'naturaleza', 3500, 2100, 28000, 99000, 1200000, 4.6375, -75.5714, 'Seguro'],
-                ['col06', 'Cristo Rey y San Antonio', 'Cali: Monumento accesible en moto o vehículo particular.', 'cultura', 1500, 700, 12000, 49000, 580000, 3.4419, -76.5597, 'Seguro']
+                ['col01', 'Cerro de Monserrate', 'Bogotá D.C.: Santuario histórico y mirador panorámico.', 'historia', 3000, 1800, 25000, 95000, 1150000, 4.6058, -74.0558, 'Moderado'],
+                ['col02', 'Piedra del Peñol y Guatapé', 'Antioquia: Monolito gigante y embalse turístico.', 'aventura', 2500, 1600, 22000, 88000, 1020000, 6.2244, -75.1606, 'Alerta Moderada'],
+                ['col03', 'Parque Nacional Natural El Cocuy', 'Boyacá: Cumbres glaciares y alta montaña.', 'aventura', 1000, 300, 4000, 15000, 180000, 6.4719, -72.3161, 'Seguro'],
+                ['col04', 'Parque Nacional Natural Tayrona', 'Magdalena: Playas paradisíacas y selva tropical.', 'naturaleza', 4000, 2200, 30000, 110000, 1300000, 11.3186, -74.0863, 'Moderado'],
+                ['col05', 'Valle del Cocora y Salento', 'Quindío: Palmas de cera gigantes y arquitectura cafetera.', 'naturaleza', 3500, 2100, 28000, 99000, 1200000, 4.6375, -75.5714, 'Seguro'],
+                ['col06', 'Cristo Rey y San Antonio', 'Cali: Monumento emblemático y barrio tradicional.', 'cultura', 1500, 700, 12000, 49000, 580000, 3.4419, -76.5597, 'Seguro']
             ];
             const stmt = db.prepare("INSERT INTO destinos_turisticos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             destinos.forEach(d => stmt.run(d));
             stmt.finalize();
 
             const hospedajes = [
-                ['col01', 'Hotel Centro Colonial Bogotá', 'Hotel', '$95.000'],
-                ['col01', 'Hostal Mochilero Candelaria', 'Hostal (Ideal caminantes)', '$45.000'],
-                ['col02', 'Bicentenario Hotel Guatapé', 'Hotel Boutique', '$130.000'],
-                ['col02', 'Glamping Embalse Guatapé', 'Glamping', '$190.000'],
-                ['col03', 'Cabañas Nevado El Cocuy', 'Cabaña', '$110.000'],
-                ['col04', 'Tayrona Eco-Camping', 'Camping / Económico', '$55.000'],
-                ['col05', 'Finca Hotel Cafetera Salento', 'Finca Tradicional', '$120.000'],
-                ['col06', 'Hotel Movich Cali', 'Hotel 4 Estrellas', '$160.000']
+                ['col01', 'Hostal Zona Rosa Backpackers', 'Hostal Económico', '$45.000'],
+                ['col01', 'Hotel Continental Bogotá', 'Hotel Tradicional', '$110.000'],
+                ['col02', 'Bicentenario Hotel Guatapé', 'Hotel Boutique', '$140.000'],
+                ['col02', 'Camping & Glamping El Peñol', 'Glamping / Moto-friendly', '$85.000'],
+                ['col03', 'Cabañas Andinas El Cocuy', 'Cabaña Rural', '$120.000'],
+                ['col04', 'Tayrona Eco-Camping', 'Zona de Camping', '$50.000'],
+                ['col04', 'Senda Watakake Tayrona', 'Eco-Hotel', '$190.000'],
+                ['col05', 'Finca Hotel Cafetera Salento', 'Finca Tradicional', '$115.000'],
+                ['col05', 'Hostal Los Girasoles Salento', 'Hostal', '$40.000'],
+                ['col06', 'Hotel Movich Intercontinental Cali', 'Hotel 4 Estrellas', '$160.000']
             ];
             const stmtH = db.prepare("INSERT INTO hospedajes (id_destino, nombre_hospedaje, tipo, precio_noche) VALUES (?, ?, ?, ?)");
             hospedajes.forEach(h => stmtH.run(h));
@@ -153,9 +162,9 @@ db.serialize(() => {
     });
 });
 
-// API: Registro de Usuario
+// API: Registro de Usuario con selección de rol (Turista o Admin con aprobación)
 app.post('/api/auth/registro', async (req, res) => {
-    const { nombre, email, password } = req.body;
+    const { nombre, email, password, rolSolicitado } = req.body;
     
     if (!passwordRegex.test(password)) {
         return res.status(400).json({ 
@@ -163,14 +172,27 @@ app.post('/api/auth/registro', async (req, res) => {
         });
     }
 
+    const rolFinal = (rolSolicitado === 'admin') ? 'admin' : 'turista';
+    const estado = (rolFinal === 'admin') ? 'pendiente' : 'aprobado';
+
     try {
         const passwordHash = await bcrypt.hash(password, 10);
-        db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)`,
-            [nombre, email, passwordHash, 'turista'],
+        db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`,
+            [nombre, email, passwordHash, rolFinal, estado],
             function(err) {
                 if (err) return res.status(400).json({ error: 'El correo ya está registrado.' });
                 
-                dispararWebhookMake('REGISTRO', { nombre, email, destino: 'N/A (Registro de cuenta)' });
+                if (rolFinal === 'admin') {
+                    // Disparar Webhook a Make para que notifique al Super Admin la solicitud
+                    dispararWebhookMake('SOLICITUD_ADMIN', { 
+                        nombre, 
+                        email, 
+                        destino: 'Solicitud de cuenta Administrador pendiente de aprobación' 
+                    });
+                    return res.json({ success: true, message: 'Registro de administrador exitoso. Su cuenta está pendiente de aprobación por el Super Administrador.' });
+                }
+
+                dispararWebhookMake('REGISTRO', { nombre, email, destino: 'N/A (Registro de cuenta Turista)' });
                 res.json({ success: true, message: 'Usuario registrado con éxito.' });
             }
         );
@@ -184,6 +206,11 @@ app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
     db.get(`SELECT * FROM usuarios WHERE email = ?`, [email], async (err, user) => {
         if (err || !user) return res.status(401).json({ error: 'Credenciales inválidas.' });
+        
+        if (user.estado_aprobacion === 'pendiente') {
+            return res.status(403).json({ error: 'Su cuenta de administrador aún está pendiente de aprobación por el Super Administrador.' });
+        }
+
         const match = await bcrypt.compare(password, user.password_hash);
         if (!match) return res.status(401).json({ error: 'Contraseña incorrecta.' });
 
@@ -205,7 +232,6 @@ app.post('/api/auth/recuperar-password', (req, res) => {
 
         db.run(`UPDATE usuarios SET reset_token = ?, reset_expires = ? WHERE email = ?`, [resetToken, resetExpires, email], (errUpdate) => {
             if (errUpdate) {
-                console.error("Error SQL al guardar token:", errUpdate.message);
                 return res.status(500).json({ error: 'Error al procesar la recuperación.' });
             }
 
@@ -283,13 +309,13 @@ app.post('/api/turista/recomendar', (req, res) => {
     });
 });
 
-// API: Cotizador de Viaje
+// API: Cotizador de Viaje adaptado a carro, moto y a pie
 app.post('/api/turista/cotizar', (req, res) => {
     const { usuarioNombre, usuarioEmail, destinoNombre, personas, dias, modoTransporte } = req.body;
-    let costoBaseDiario = 70000; 
-    if (modoTransporte === 'Carro') costoBaseDiario = 110000;
-    if (modoTransporte === 'Moto') costoBaseDiario = 60000;
-    if (modoTransporte === 'A pie') costoBaseDiario = 40000;
+    let costoBaseDiario = 65000; 
+    if (modoTransporte === 'Carro') costoBaseDiario = 100000;
+    if (modoTransporte === 'Moto') costoBaseDiario = 55000;
+    if (modoTransporte === 'A pie') costoBaseDiario = 35000;
 
     const costoTotal = Number(personas) * Number(dias) * costoBaseDiario;
     
@@ -322,7 +348,7 @@ app.post('/api/destinos/actualizar', (req, res) => {
     });
 });
 
-// API: Actualizar Precios
+// API: Actualizar Precios de Hospedaje
 app.post('/api/admin/hospedajes/actualizar', (req, res) => {
     const { id_destino, nombre_hospedaje, tipo, precio_noche, rolUsuario, usuarioEmail } = req.body;
     if (rolUsuario !== 'admin' && rolUsuario !== 'super_admin') {
@@ -347,27 +373,28 @@ app.get('/api/admin/usuarios', (req, res) => {
     if (userRole !== 'super_admin') {
         return res.status(403).json({ error: 'Acceso restringido al Super Administrador.' });
     }
-    db.all("SELECT id_usuario, nombre, email, rol FROM usuarios", [], (err, usuarios) => {
+    db.all("SELECT id_usuario, nombre, email, rol, estado_aprobacion FROM usuarios", [], (err, usuarios) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(usuarios);
     });
 });
 
-// API: Cambiar Rol
+// API: Cambiar Rol o Aprobar Admin
 app.post('/api/admin/usuarios/rol', (req, res) => {
-    const { id_usuario, nuevoRol, rolUsuario, usuarioEmail } = req.body;
+    const { id_usuario, nuevoRol, estadoAprobacion, rolUsuario, usuarioEmail } = req.body;
     if (rolUsuario !== 'super_admin') {
-        return res.status(403).json({ error: 'Solo el Super Administrador puede otorgar o revocar permisos.' });
+        return res.status(403).json({ error: 'Solo el Super Administrador puede aprobar o modificar privilegios.' });
     }
 
-    db.run(`UPDATE usuarios SET rol = ? WHERE id_usuario = ?`, [nuevoRol, id_usuario], function(err) {
-        if (err) return res.status(500).json({ error: 'Error al actualizar permisos.' });
+    db.run(`UPDATE usuarios SET rol = COALESCE(?, rol), estado_aprobacion = COALESCE(?, estado_aprobacion) WHERE id_usuario = ?`, 
+        [nuevoRol, estadoAprobacion, id_usuario], function(err) {
+        if (err) return res.status(500).json({ error: 'Error al actualizar usuario.' });
 
         const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
         db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
-            [fechaIso, usuarioEmail, `Modificación de privilegios ID usuario ${id_usuario} a rol: ${nuevoRol}`, 'CRITICA']);
+            [fechaIso, usuarioEmail, `Actualización de cuenta ID ${id_usuario} (Rol: ${nuevoRol}, Estado: ${estadoAprobacion})`, 'CRITICA']);
 
-        res.json({ success: true, message: 'Permisos de usuario actualizados correctamente.' });
+        res.json({ success: true, message: 'Usuario actualizado correctamente.' });
     });
 });
 
