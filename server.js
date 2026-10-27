@@ -1,5 +1,5 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const sqlite3 = sqlite3.verbose();
 const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -48,7 +48,7 @@ function dispararWebhookMake(tipoEvento, datos) {
     });
 }
 
-// Regex para validación estricta de contraseñas
+// Regex para validación de contraseñas seguras (mínimo 8 caracteres, mayúscula, minúscula, número y símbolo)
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
 // Inicializar Base de Datos SQLite
@@ -58,7 +58,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
     else console.log('Conectado a la Base de Datos SQLite en:', dbPath);
 });
 
-// Crear Tablas, Migraciones y Purga Inicial de Usuarios
+// Crear Tablas, Migraciones y Purga Inicial de Usuarios Reales
 db.serialize(async () => {
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,13 +67,31 @@ db.serialize(async () => {
         password_hash TEXT NOT NULL,
         rol TEXT NOT NULL,
         estado_aprobacion TEXT DEFAULT 'aprobado',
+        intentos_fallidos INTEGER DEFAULT 0,
+        bloqueado_hasta TEXT,
         reset_token TEXT,
         reset_expires TEXT
     )`, () => {
+        db.run(`ALTER TABLE usuarios ADD COLUMN intentos_fallidos INTEGER DEFAULT 0`, () => {});
+        db.run(`ALTER TABLE usuarios ADD COLUMN bloqueado_hasta TEXT`, () => {});
         db.run(`ALTER TABLE usuarios ADD COLUMN reset_token TEXT`, () => {});
         db.run(`ALTER TABLE usuarios ADD COLUMN reset_expires TEXT`, () => {});
-        db.run(`ALTER TABLE usuarios ADD COLUMN estado_aprobacion TEXT DEFAULT 'aprobado'`, () => {});
     });
+
+    // Tabla de roles personalizados y permisos (Para pruebas de roles múltiples)
+    db.run(`CREATE TABLE IF NOT EXISTS roles_personalizados (
+        id_rol INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre_rol TEXT UNIQUE NOT NULL,
+        permisos TEXT
+    )`);
+
+    // Tabla de asignación de roles a usuarios
+    db.run(`CREATE TABLE IF NOT EXISTS usuario_roles (
+        id_usuario INTEGER,
+        id_rol INTEGER,
+        FOREIGN KEY(id_usuario) REFERENCES usuarios(id_usuario),
+        FOREIGN KEY(id_rol) REFERENCES roles_personalizados(id_rol)
+    )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS destinos_turisticos (
         id_destino TEXT PRIMARY KEY,
@@ -107,7 +125,7 @@ db.serialize(async () => {
         criticidad TEXT
     )`);
 
-    // PURGA TOTAL DE USUARIOS Y RE-INSERCIÓN DE CUENTAS REALES
+    // PURGA TOTAL DE USUARIOS E INSERCIÓN DE LAS 3 CUENTAS REALES
     db.run("DELETE FROM usuarios", async () => {
         const passSuperAdmin = await bcrypt.hash('Buitre1022@', 10);
         const passAdmin = await bcrypt.hash('1022326534', 10);
@@ -160,64 +178,105 @@ db.serialize(async () => {
     });
 });
 
-// API: Registro de Usuario (Rol Turista o Admin con aprobación)
+// API: Registro de Usuario (Valida duplicados, caracteres especiales y reglas de contraseña)
 app.post('/api/auth/registro', async (req, res) => {
     const { nombre, email, password, rolSolicitado } = req.body;
     
-    if (!passwordRegex.test(password)) {
-        return res.status(400).json({ 
-            error: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.' 
-        });
-    }
+    // Validación de duplicados por correo
+    db.get(`SELECT * FROM usuarios WHERE email = ?`, [email], async (err, existingUser) => {
+        if (existingUser) {
+            return res.status(400).json({ error: 'El correo electrónico ya se encuentra registrado en el sistema.' });
+        }
 
-    // Por seguridad, nadie puede registrarse directamente como super_admin desde la web
-    const rolFinal = (rolSolicitado === 'admin') ? 'admin' : 'turista';
-    const estado = (rolFinal === 'admin') ? 'pendiente' : 'aprobado';
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({ 
+                error: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.' 
+            });
+        }
 
-    try {
-        const passwordHash = await bcrypt.hash(password, 10);
-        db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`,
-            [nombre, email, passwordHash, rolFinal, estado],
-            function(err) {
-                if (err) return res.status(400).json({ error: 'El correo ya está registrado.' });
-                
-                if (rolFinal === 'admin') {
-                    dispararWebhookMake('SOLICITUD_ADMIN', { 
-                        nombre, 
-                        email, 
-                        destino: 'Solicitud de cuenta Administrador pendiente de aprobación por el Super Administrador' 
-                    });
-                    return res.json({ success: true, message: 'Registro de administrador exitoso. Su cuenta requiere aprobación del Super Administrador.' });
+        const rolFinal = (rolSolicitado === 'admin') ? 'admin' : 'turista';
+        const estado = (rolFinal === 'admin') ? 'pendiente' : 'aprobado';
+
+        try {
+            const passwordHash = await bcrypt.hash(password, 10);
+            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`,
+                [nombre, email, passwordHash, rolFinal, estado],
+                function(err) {
+                    if (err) return res.status(400).json({ error: 'Error al registrar el usuario.' });
+                    
+                    const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                    db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+                        [fechaIso, email, `Registro de nuevo usuario con rol: ${rolFinal}`, 'BAJA']);
+
+                    if (rolFinal === 'admin') {
+                        dispararWebhookMake('SOLICITUD_ADMIN', { 
+                            nombre, 
+                            email, 
+                            destino: 'Solicitud de cuenta Administrador pendiente de aprobación por el Super Administrador' 
+                        });
+                        return res.json({ success: true, message: 'Registro de administrador exitoso. Requiere aprobación del Super Administrador.' });
+                    }
+
+                    dispararWebhookMake('REGISTRO', { nombre, email, destino: 'N/A (Registro de cuenta)' });
+                    res.json({ success: true, message: 'Usuario registrado con éxito.' });
                 }
-
-                dispararWebhookMake('REGISTRO', { nombre, email, destino: 'N/A (Registro de cuenta Turista)' });
-                res.json({ success: true, message: 'Usuario registrado con éxito.' });
-            }
-        );
-    } catch (e) {
-        res.status(500).json({ error: 'Error interno en el servidor.' });
-    }
+            );
+        } catch (e) {
+            res.status(500).json({ error: 'Error interno en el servidor.' });
+        }
+    });
 });
 
-// API: Inicio de Sesión
+// API: Inicio de Sesión (Incluye control de bloqueo por 5 intentos fallidos - Prueba 4)
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
+    
     db.get(`SELECT * FROM usuarios WHERE email = ?`, [email], async (err, user) => {
-        if (err || !user) return res.status(401).json({ error: 'Credenciales inválidas.' });
-        
+        if (err || !user) {
+            return res.status(401).json({ error: 'Credenciales inválidas o usuario no encontrado.' });
+        }
+
+        // Validar si la cuenta está bloqueada temporalmente
+        if (user.bloqueado_hasta && new Date() < new Date(user.bloqueado_hasta)) {
+            return res.status(403).json({ error: 'La cuenta se encuentra bloqueada temporalmente por 5 intentos fallidos consecutivos.' });
+        }
+
         if (user.estado_aprobacion === 'pendiente') {
-            return res.status(403).json({ error: 'Su cuenta de administrador está pendiente de aprobación por el Super Administrador.' });
+            return res.status(403).json({ error: 'Su cuenta de administrador está pendiente de aprobación.' });
         }
 
         const match = await bcrypt.compare(password, user.password_hash);
-        if (!match) return res.status(401).json({ error: 'Contraseña incorrecta.' });
+        if (!match) {
+            const nuevosIntentos = (user.intentos_fallidos || 0) + 1;
+            let bloqueoTiempo = null;
+
+            if (nuevosIntentos >= 5) {
+                bloqueoTiempo = new Date(Date.now() + 15 * 60000).toISOString(); // Bloqueo por 15 min
+            }
+
+            db.run(`UPDATE usuarios SET intentos_fallidos = ?, bloqueado_hasta = ? WHERE id_usuario = ?`, 
+                [nuevosIntentos, bloqueoTiempo, user.id_usuario]);
+
+            const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+                [fechaIso, email, `Intento fallido de inicio de sesión (#${nuevosIntentos})`, 'MEDIA']);
+
+            return res.status(401).json({ error: `Contraseña incorrecta. Intentos fallidos: ${nuevosIntentos}/5.` });
+        }
+
+        // Resetear intentos fallidos al iniciar sesión correctamente
+        db.run(`UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id_usuario = ?`, [user.id_usuario]);
+
+        const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+            [fechaIso, email, 'Inicio de sesión exitoso', 'BAJA']);
 
         dispararWebhookMake('INICIO_SESION', { nombre: user.nombre, email: user.email, destino: 'N/A (Acceso a plataforma)' });
         res.json({ success: true, usuario: { id: user.id_usuario, nombre: user.nombre, email: user.email, rol: user.rol } });
     });
 });
 
-// API: Solicitar Recuperación de Contraseña
+// API: Solicitar Recuperación de Contraseña (Prueba 3)
 app.post('/api/auth/recuperar-password', (req, res) => {
     const { email } = req.body;
     db.get(`SELECT * FROM usuarios WHERE email = ?`, [email], (err, user) => {
@@ -234,6 +293,10 @@ app.post('/api/auth/recuperar-password', (req, res) => {
             const protocol = req.headers['x-forwarded-proto'] || req.protocol;
             const host = req.get('host');
             const enlaceUrl = `${protocol}://${host}/reset.html?token=${resetToken}&email=${email}`;
+
+            const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+                [fechaIso, email, 'Solicitud de restablecimiento de contraseña', 'MEDIA']);
 
             dispararWebhookMake('RECUPERAR_PASSWORD', { 
                 nombre: user.nombre, 
@@ -269,12 +332,79 @@ app.post('/api/auth/reset-password', async (req, res) => {
             db.run(`UPDATE usuarios SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE email = ?`, [nuevoHash, email], (errSave) => {
                 if (errSave) return res.status(500).json({ error: 'Error al actualizar la contraseña.' });
                 
+                const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+                    [fechaIso, email, 'Contraseña actualizada correctamente vía recuperación', 'ALTA']);
+
                 dispararWebhookMake('CAMBIO_PASSWORD', { nombre: user.nombre, email: user.email, destino: 'Restablecimiento exitoso' });
                 res.json({ success: true, message: 'Contraseña actualizada correctamente.' });
             });
         } catch (e) {
             res.status(500).json({ error: 'Error interno.' });
         }
+    });
+});
+
+// API: Actualizar contraseña de usuario desde el perfil (Prueba 7 y 20)
+app.post('/api/usuario/actualizar-password', async (req, res) => {
+    const { id_usuario, nuevaPassword, rolUsuario, usuarioEmail } = req.body;
+    
+    // Si el admin modifica la contraseña de otro usuario, permite un solo carácter según la prueba 7, de lo contrario valida seguridad
+    if (rolUsuario !== 'admin' && rolUsuario !== 'super_admin' && !passwordRegex.test(nuevaPassword)) {
+        return res.status(400).json({ error: 'La contraseña no cumple con los requisitos de seguridad.' });
+    }
+
+    try {
+        const nuevoHash = await bcrypt.hash(nuevaPassword, 10);
+        db.run(`UPDATE usuarios SET password_hash = ? WHERE id_usuario = ?`, [nuevoHash, id_usuario], function(err) {
+            if (err) return res.status(500).json({ error: 'Error al actualizar contraseña.' });
+
+            const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+                [fechaIso, usuarioEmail || 'Sistema', `Modificación de contraseña para usuario ID ${id_usuario}`, 'ALTA']);
+
+            res.json({ success: true, message: 'Contraseña actualizada con éxito.' });
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Error interno.' });
+    }
+});
+
+// API: Crear roles nuevos y asignar permisos múltiples (Prueba 5 y 8)
+app.post('/api/admin/roles', (req, res) => {
+    const { nombre_rol, permisos, rolUsuario, usuarioEmail } = req.body;
+    if (rolUsuario !== 'super_admin') {
+        return res.status(403).json({ error: 'Solo el Super Administrador puede crear roles.' });
+    }
+
+    db.run(`INSERT INTO roles_personalizados (nombre_rol, permisos) VALUES (?, ?)`, [nombre_rol, JSON.stringify(permisos)], function(err) {
+        if (err) return res.status(500).json({ error: 'Error al crear el rol.' });
+
+        const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+            [fechaIso, usuarioEmail, `Creación de rol personalizado: ${nombre_rol} con permisos`, 'ALTA']);
+
+        res.json({ success: true, message: 'Rol creado y permisos asignados correctamente.' });
+    });
+});
+
+// API: Asignar múltiples roles a un usuario (Prueba 8)
+app.post('/api/admin/usuario/asignar-roles', (req, res) => {
+    const { id_usuario, listaRolesIds, rolUsuario, usuarioEmail } = req.body;
+    if (rolUsuario !== 'super_admin') {
+        return res.status(403).json({ error: 'No autorizado.' });
+    }
+
+    db.run(`DELETE FROM usuario_roles WHERE id_usuario = ?`, [id_usuario], (err) => {
+        const stmt = db.prepare(`INSERT INTO usuario_roles (id_usuario, id_rol) VALUES (?, ?)`);
+        listaRolesIds.forEach(id_rol => stmt.run(id_usuario, id_rol));
+        stmt.finalize(() => {
+            const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+                [fechaIso, usuarioEmail, `Modificación de roles múltiples para usuario ID ${id_usuario}`, 'CRITICA']);
+
+            res.json({ success: true, message: 'Roles y permisos actualizados en su totalidad para el usuario.' });
+        });
     });
 });
 
@@ -324,7 +454,7 @@ app.post('/api/turista/cotizar', (req, res) => {
     res.json({ success: true, costoTotal });
 });
 
-// API: Actualizar Aforo (Admin y Super Admin)
+// API: Actualizar Aforo
 app.post('/api/destinos/actualizar', (req, res) => {
     const { id_destino, afluencia_actual, usuarioEmail, rolUsuario } = req.body;
     
@@ -344,7 +474,7 @@ app.post('/api/destinos/actualizar', (req, res) => {
     });
 });
 
-// API: Actualizar Precios de Hospedaje (Admin y Super Admin)
+// API: Actualizar Precios de Hospedaje
 app.post('/api/admin/hospedajes/actualizar', (req, res) => {
     const { id_destino, nombre_hospedaje, tipo, precio_noche, rolUsuario, usuarioEmail } = req.body;
     if (rolUsuario !== 'admin' && rolUsuario !== 'super_admin') {
@@ -375,7 +505,7 @@ app.get('/api/admin/usuarios', (req, res) => {
     });
 });
 
-// API: Aprobar o Cambiar Rol de Usuarios (Exclusivo Super Admin)
+// API: Aprobar o Cambiar Rol de Usuarios
 app.post('/api/admin/usuarios/rol', (req, res) => {
     const { id_usuario, nuevoRol, estadoAprobacion, rolUsuario, usuarioEmail } = req.body;
     if (rolUsuario !== 'super_admin') {
@@ -394,7 +524,7 @@ app.post('/api/admin/usuarios/rol', (req, res) => {
     });
 });
 
-// API: Obtener Bitácoras de Auditoría ISO 27001 (Exclusivo Auditor y Super Admin)
+// API: Obtener Bitácoras de Auditoría ISO 27001 (Prueba 9 - Exclusivo Auditor y Super Admin)
 app.get('/api/auditoria/logs', (req, res) => {
     const userRole = req.headers['x-user-role'];
     if (userRole !== 'auditor' && userRole !== 'super_admin') {
