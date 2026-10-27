@@ -58,8 +58,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
     else console.log('Conectado a la Base de Datos SQLite en:', dbPath);
 });
 
-// Crear Tablas y Migraciones Seguras
-db.serialize(() => {
+// Crear Tablas, Migraciones y Purga Inicial de Usuarios
+db.serialize(async () => {
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL,
@@ -107,25 +107,23 @@ db.serialize(() => {
         criticidad TEXT
     )`);
 
-    // Inserción de tus cuentas reales con roles específicos y contraseñas cifradas
-    db.get("SELECT COUNT(*) as count FROM usuarios", async (err, row) => {
-        if (row && row.count === 0) {
-            const passSuperAdmin = await bcrypt.hash('Buitre1022@', 10);
-            const passAdmin = await bcrypt.hash('1022326534', 10);
-            const passAuditor = await bcrypt.hash('1022326534', 10);
+    // PURGA TOTAL DE USUARIOS Y RE-INSERCIÓN DE CUENTAS REALES
+    db.run("DELETE FROM usuarios", async () => {
+        const passSuperAdmin = await bcrypt.hash('Buitre1022@', 10);
+        const passAdmin = await bcrypt.hash('1022326534', 10);
+        const passAuditor = await bcrypt.hash('1022326534', 10);
 
-            // 1. super_admin (buitragoandres702@gmail.com)
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`, 
-                ['Andrés SuperAdmin', 'buitragoandres702@gmail.com', passSuperAdmin, 'super_admin', 'aprobado']);
-            
-            // 2. admin (andresfelipebuitragoquintero@gmail.com)
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`, 
-                ['Andrés Felipe Admin', 'andresfelipebuitragoquintero@gmail.com', passAdmin, 'admin', 'aprobado']);
-            
-            // 3. auditor (pepitosaludos717@gmail.com)
-            db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`, 
-                ['Pepito Auditor', 'pepitosaludos717@gmail.com', passAuditor, 'auditor', 'aprobado']);
-        }
+        // 1. Super Admin principal
+        db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`, 
+            ['Andrés SuperAdmin', 'buitragoandres702@gmail.com', passSuperAdmin, 'super_admin', 'aprobado']);
+        
+        // 2. Admin
+        db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`, 
+            ['Andrés Felipe Admin', 'andresfelipebuitragoquintero@gmail.com', passAdmin, 'admin', 'aprobado']);
+        
+        // 3. Auditor
+        db.run(`INSERT INTO usuarios (nombre, email, password_hash, rol, estado_aprobacion) VALUES (?, ?, ?, ?, ?)`, 
+            ['Pepito Auditor', 'pepitosaludos717@gmail.com', passAuditor, 'auditor', 'aprobado']);
     });
 
     // Semilla de destinos y hospedajes con precios realistas (Carro, Moto, A pie)
@@ -162,7 +160,7 @@ db.serialize(() => {
     });
 });
 
-// API: Registro de Usuario con selección de rol (Turista o Admin con aprobación)
+// API: Registro de Usuario (Rol Turista o Admin con aprobación)
 app.post('/api/auth/registro', async (req, res) => {
     const { nombre, email, password, rolSolicitado } = req.body;
     
@@ -172,6 +170,7 @@ app.post('/api/auth/registro', async (req, res) => {
         });
     }
 
+    // Por seguridad, nadie puede registrarse directamente como super_admin desde la web
     const rolFinal = (rolSolicitado === 'admin') ? 'admin' : 'turista';
     const estado = (rolFinal === 'admin') ? 'pendiente' : 'aprobado';
 
@@ -183,13 +182,12 @@ app.post('/api/auth/registro', async (req, res) => {
                 if (err) return res.status(400).json({ error: 'El correo ya está registrado.' });
                 
                 if (rolFinal === 'admin') {
-                    // Disparar Webhook a Make para que notifique al Super Admin la solicitud
                     dispararWebhookMake('SOLICITUD_ADMIN', { 
                         nombre, 
                         email, 
-                        destino: 'Solicitud de cuenta Administrador pendiente de aprobación' 
+                        destino: 'Solicitud de cuenta Administrador pendiente de aprobación por el Super Administrador' 
                     });
-                    return res.json({ success: true, message: 'Registro de administrador exitoso. Su cuenta está pendiente de aprobación por el Super Administrador.' });
+                    return res.json({ success: true, message: 'Registro de administrador exitoso. Su cuenta requiere aprobación del Super Administrador.' });
                 }
 
                 dispararWebhookMake('REGISTRO', { nombre, email, destino: 'N/A (Registro de cuenta Turista)' });
@@ -208,7 +206,7 @@ app.post('/api/auth/login', (req, res) => {
         if (err || !user) return res.status(401).json({ error: 'Credenciales inválidas.' });
         
         if (user.estado_aprobacion === 'pendiente') {
-            return res.status(403).json({ error: 'Su cuenta de administrador aún está pendiente de aprobación por el Super Administrador.' });
+            return res.status(403).json({ error: 'Su cuenta de administrador está pendiente de aprobación por el Super Administrador.' });
         }
 
         const match = await bcrypt.compare(password, user.password_hash);
@@ -231,9 +229,7 @@ app.post('/api/auth/recuperar-password', (req, res) => {
         const resetExpires = new Date(Date.now() + 3600000).toISOString();
 
         db.run(`UPDATE usuarios SET reset_token = ?, reset_expires = ? WHERE email = ?`, [resetToken, resetExpires, email], (errUpdate) => {
-            if (errUpdate) {
-                return res.status(500).json({ error: 'Error al procesar la recuperación.' });
-            }
+            if (errUpdate) return res.status(500).json({ error: 'Error al procesar la recuperación.' });
 
             const protocol = req.headers['x-forwarded-proto'] || req.protocol;
             const host = req.get('host');
@@ -309,7 +305,7 @@ app.post('/api/turista/recomendar', (req, res) => {
     });
 });
 
-// API: Cotizador de Viaje adaptado a carro, moto y a pie
+// API: Cotizador de Viaje (Carro, Moto, A pie)
 app.post('/api/turista/cotizar', (req, res) => {
     const { usuarioNombre, usuarioEmail, destinoNombre, personas, dias, modoTransporte } = req.body;
     let costoBaseDiario = 65000; 
@@ -328,7 +324,7 @@ app.post('/api/turista/cotizar', (req, res) => {
     res.json({ success: true, costoTotal });
 });
 
-// API: Actualizar Aforo
+// API: Actualizar Aforo (Admin y Super Admin)
 app.post('/api/destinos/actualizar', (req, res) => {
     const { id_destino, afluencia_actual, usuarioEmail, rolUsuario } = req.body;
     
@@ -348,7 +344,7 @@ app.post('/api/destinos/actualizar', (req, res) => {
     });
 });
 
-// API: Actualizar Precios de Hospedaje
+// API: Actualizar Precios de Hospedaje (Admin y Super Admin)
 app.post('/api/admin/hospedajes/actualizar', (req, res) => {
     const { id_destino, nombre_hospedaje, tipo, precio_noche, rolUsuario, usuarioEmail } = req.body;
     if (rolUsuario !== 'admin' && rolUsuario !== 'super_admin') {
@@ -367,7 +363,7 @@ app.post('/api/admin/hospedajes/actualizar', (req, res) => {
     });
 });
 
-// API: Listar Usuarios
+// API: Listar Usuarios (Exclusivo Super Admin)
 app.get('/api/admin/usuarios', (req, res) => {
     const userRole = req.headers['x-user-role'];
     if (userRole !== 'super_admin') {
@@ -379,7 +375,7 @@ app.get('/api/admin/usuarios', (req, res) => {
     });
 });
 
-// API: Cambiar Rol o Aprobar Admin
+// API: Aprobar o Cambiar Rol de Usuarios (Exclusivo Super Admin)
 app.post('/api/admin/usuarios/rol', (req, res) => {
     const { id_usuario, nuevoRol, estadoAprobacion, rolUsuario, usuarioEmail } = req.body;
     if (rolUsuario !== 'super_admin') {
@@ -392,13 +388,13 @@ app.post('/api/admin/usuarios/rol', (req, res) => {
 
         const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
         db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
-            [fechaIso, usuarioEmail, `Actualización de cuenta ID ${id_usuario} (Rol: ${nuevoRol}, Estado: ${estadoAprobacion})`, 'CRITICA']);
+            [fechaIso, usuarioEmail, `Gestión de cuenta ID ${id_usuario} (Rol: ${nuevoRol}, Estado: ${estadoAprobacion})`, 'CRITICA']);
 
         res.json({ success: true, message: 'Usuario actualizado correctamente.' });
     });
 });
 
-// API: Obtener Logs
+// API: Obtener Bitácoras de Auditoría ISO 27001 (Exclusivo Auditor y Super Admin)
 app.get('/api/auditoria/logs', (req, res) => {
     const userRole = req.headers['x-user-role'];
     if (userRole !== 'auditor' && userRole !== 'super_admin') {
