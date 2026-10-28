@@ -92,7 +92,7 @@
 
             </div>
 
-            <!-- VISTA GESTOR DMO / SUPER ADMIN -->
+            <!-- VISTA GESTOR DMO / SUPER ADMIN / ADMIN -->
             <div id="panel-dmo" class="space-y-6 hidden">
                 <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl shadow-xl">
                     <h3 class="text-base font-bold mb-2 text-purple-400"><i class="fa-solid fa-sliders"></i> Panel Operativo DMO & Control de Aforos</h3>
@@ -176,6 +176,13 @@
                     <label class="block text-xs text-slate-400 mb-1">Contraseña (Mín. 8 caracteres, mayúscula, minúscula, número y símbolo):</label>
                     <input type="password" id="reg-pass" required class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white" placeholder="••••••••">
                 </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Seleccionar Rol:</label>
+                    <select id="reg-rol" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white">
+                        <option value="turista">Turista (Acceso estándar)</option>
+                        <option value="admin">Administrador (Requiere aprobación del Super Admin)</option>
+                    </select>
+                </div>
                 <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg text-sm transition">Registrarse</button>
             </form>
         </div>
@@ -252,6 +259,7 @@
 
         async function handleRegistro(e) {
             e.preventDefault();
+            const rolSolicitado = document.getElementById('reg-rol').value;
             const res = await fetch('/api/auth/registro', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -259,7 +267,7 @@
                     nombre: document.getElementById('reg-nombre').value, 
                     email: document.getElementById('reg-email').value, 
                     password: document.getElementById('reg-pass').value, 
-                    rol: 'turista' 
+                    rolSolicitado 
                 })
             });
             const data = await res.json();
@@ -290,7 +298,7 @@
                 document.getElementById('user-role-badge').innerText = usuarioActual.rol;
 
                 // Control según roles
-                if (usuarioActual.rol === 'dmo' || usuarioActual.rol === 'super_admin') {
+                if (usuarioActual.rol === 'admin' || usuarioActual.rol === 'super_admin') {
                     panelDmo.classList.remove('hidden');
                 }
                 if (usuarioActual.rol === 'auditor' || usuarioActual.rol === 'super_admin') {
@@ -395,7 +403,7 @@
         }
 
         async function actualizarAforo() {
-            if (!usuarioActual) return alert("Debe iniciar sesión como DMO o Administrador.");
+            if (!usuarioActual) return alert("Debe iniciar sesión como Administrador o Super Administrador.");
             const id_destino = document.getElementById('select-dest').value;
             const afluencia_actual = parseInt(document.getElementById('input-afluencia').value);
             
