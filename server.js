@@ -195,9 +195,16 @@ app.post('/api/auth/registro', async (req, res) => {
                         [fechaIso, email, `Registro de nuevo usuario con rol: ${rolFinal}`, 'BAJA']);
 
                     if (rolFinal === 'admin') {
+                        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+                        const host = req.get('host');
+                        const enlaceAprobar = `${protocol}://${host}/api/admin/aprobar-enlace?email=${email}&accion=aprobar`;
+                        const enlaceRechazar = `${protocol}://${host}/api/admin/aprobar-enlace?email=${email}&accion=rechazar`;
+
                         dispararWebhookMake('SOLICITUD_ADMIN', { 
                             nombre, 
                             email, 
+                            enlaceAprobar,
+                            enlaceRechazar,
                             destino: 'Solicitud de cuenta Administrador pendiente de aprobación por el Super Administrador' 
                         });
                         return res.json({ success: true, message: 'Registro de administrador exitoso. Requiere aprobación del Super Administrador.' });
@@ -296,7 +303,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     const { email, token, nuevaPassword } = req.body;
 
     if (!passwordRegex.test(nuevaPassword)) {
-        return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres, mayúscula, minúscula, número y símbolo.' });
+        return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres, mayúscula, minúscula, número y símbolo.' });
     }
 
     db.get(`SELECT * FROM usuarios WHERE email = ? AND reset_token = ?`, [email, token], async (err, user) => {
@@ -383,6 +390,54 @@ app.post('/api/destinos/actualizar', (req, res) => {
         dispararWebhookMake('ACTUALIZACION_AFORO', { nombre: 'Administrador', email: usuarioEmail, destino: `Aforo actualizado destino ID: ${id_destino} a ${afluencia_actual}` });
 
         res.json({ success: true, message: 'Aforo actualizado y registrado en auditoría.' });
+    });
+});
+
+// API: Listar usuarios (Super Admin)
+app.get('/api/admin/usuarios', (req, res) => {
+    const userRole = req.headers['x-user-role'];
+    if (userRole !== 'super_admin') {
+        return res.status(403).json({ error: 'Acceso restringido.' });
+    }
+    db.all("SELECT id_usuario, nombre, email, rol, estado_aprobacion FROM usuarios", [], (err, usuarios) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(usuarios);
+    });
+});
+
+// API: Aprobar o cambiar rol de usuarios (Super Admin y por enlace)
+app.post('/api/admin/usuarios/rol', (req, res) => {
+    const { id_usuario, nuevoRol, estadoAprobacion, rolUsuario, usuarioEmail } = req.body;
+    if (rolUsuario !== 'super_admin') {
+        return res.status(403).json({ error: 'Solo el Super Administrador puede aprobar o modificar privilegios.' });
+    }
+
+    db.run(`UPDATE usuarios SET rol = COALESCE(?, rol), estado_aprobacion = COALESCE(?, estado_aprobacion) WHERE id_usuario = ?`, 
+        [nuevoRol, estadoAprobacion, id_usuario], function(err) {
+        if (err) return res.status(500).json({ error: 'Error al actualizar usuario.' });
+
+        const fechaIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        db.run("INSERT INTO auditoria_logs (fecha_hora, usuario, accion, criticidad) VALUES (?, ?, ?, ?)",
+            [fechaIso, usuarioEmail || 'SuperAdmin', `Gestión de cuenta ID ${id_usuario} (Rol: ${nuevoRol}, Estado: ${estadoAprobacion})`, 'CRITICA']);
+
+        res.json({ success: true, message: 'Usuario actualizado correctamente.' });
+    });
+});
+
+// API: Aprobación directa por enlace web (desde el correo de Make)
+app.get('/api/admin/aprobar-enlace', (req, res) => {
+    const { email, accion } = req.query;
+    const nuevoRol = (accion === 'aprobar') ? 'admin' : 'turista';
+    const estadoAprobacion = (accion === 'aprobar') ? 'aprobado' : 'rechazado';
+
+    db.run(`UPDATE usuarios SET rol = ?, estado_aprobacion = ? WHERE email = ?`, 
+        [nuevoRol, estadoAprobacion, email], function(err) {
+        if (err || this.changes === 0) {
+            return res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:50px;background:#0f172a;color:#fff;"><h1>❌ Error</h1><p>No se pudo procesar la solicitud o el correo no existe en el sistema.</p></body></html>`);
+        }
+
+        const mensajeAccion = accion === 'aprobar' ? 'aprobado como Administrador' : 'rechazado (convertido a Turista)';
+        res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:50px;background:#0f172a;color:#34d399;"><h1>✅ ¡Acción Exitosa!</h1><p>El usuario <b>${email}</b> ha sido <b>${mensajeAccion}</b> exitosamente.</p><a href="/" style="color:#60a5fa;text-decoration:underline;">Volver a la plataforma</a></body></html>`);
     });
 });
 
