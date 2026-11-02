@@ -10,9 +10,9 @@
 <body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen">
 
     <!-- NAVBAR SUPERIOR -->
-    <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 p-4 sticky top-0 z-50 shadow">
+    <header class="bg-slate-900/85 backdrop-blur border-b border-slate-800 p-4 sticky top-0 z-50 shadow">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="irAlCatalogoGeneral()">
                 <i class="fa-solid fa-mountain-sun text-emerald-400 text-2xl"></i>
                 <h1 class="text-lg font-bold tracking-wide">Turismo Inteligente <span class="text-xs text-blue-400 font-normal">Colombia</span></h1>
             </div>
@@ -111,7 +111,7 @@
                     <p class="text-xs text-slate-400 mt-1">Panel operativo seguro bajo normativas ISO 27001. Rol activo: <span id="dash-rol" class="uppercase font-bold text-blue-400"></span></p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="window.scrollTo({top:0, behavior:'smooth'})" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-medium border border-slate-700">Ver Catálogo General</button>
+                    <button onclick="irAlCatalogoGeneral()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-medium border border-slate-700 transition">Ver Catálogo General</button>
                 </div>
             </div>
 
@@ -269,6 +269,14 @@
             }
         }
 
+        function irAlCatalogoGeneral() {
+            const vistaPublica = document.getElementById('vista-publica');
+            if (vistaPublica) {
+                vistaPublica.classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
         function abrirModalAuth(tipo) {
             document.getElementById('auth-modal').classList.remove('hidden');
             cambiarTabModal(tipo);
@@ -402,7 +410,7 @@
             const res = await fetch('/api/turista/cotizar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usuarioNombre: 'Visitante', usuarioEmail: 'visitante@turismo.co', destinoNombre, personas, dias, modoTransporte })
+                body: JSON.stringify({ usuarioNombre: usuarioActual ? usuarioActual.nombre : 'Visitante', usuarioEmail: usuarioActual ? usuarioActual.email : 'visitante@turismo.co', destinoNombre, personas, dias, modoTransporte })
             });
             const data = await res.json();
             const boxCotiza = document.getElementById('resultado-cotiza');
@@ -438,7 +446,7 @@
                             <td class="p-3 uppercase text-blue-400 font-bold">${u.rol}</td>
                             <td class="p-3"><span class="px-2 py-1 rounded text-[10px] ${u.estado_aprobacion === 'pendiente' ? 'bg-amber-500/20 text-amber-400 font-bold' : 'bg-emerald-500/20 text-emerald-400'}">${u.estado_aprobacion}</span></td>
                             <td class="p-3 space-x-2">
-                                ${u.estado_aprobacion === 'pendiente' ? `<button onclick="cambiarEstadoUsuario(${u.id_usuario}, 'admin', 'aprobado')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs">Aprobar</button>` : ''}
+                                ${u.estado_apropacion === 'pendiente' ? `<button onclick="cambiarEstadoUsuario(${u.id_usuario}, 'admin', 'aprobado')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs">Aprobar</button>` : ''}
                                 <button onclick="cambiarEstadoUsuario(${u.id_usuario}, 'turista', 'aprobado')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded text-xs">Cambiar a Turista</button>
                             </td>
                         </tr>
