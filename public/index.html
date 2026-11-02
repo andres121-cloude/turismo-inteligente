@@ -28,13 +28,13 @@
 
         <!-- ================= VISTA PÚBLICA (LANDING PAGE / PREVENTA) ================= -->
         <div id="vista-publica" class="space-y-12">
-            <!-- Hero Section -->
-            <div class="relative bg-gradient-to-r from-blue-900/40 via-slate-900 to-emerald-900/40 border border-slate-800 p-8 md:p-12 rounded-3xl shadow-2xl overflow-hidden text-center">
+            <!-- Hero Section Dinámico (Oculta botones si ya hay sesión) -->
+            <div id="hero-banner-auth" class="relative bg-gradient-to-r from-blue-900/40 via-slate-900 to-emerald-900/40 border border-slate-800 p-8 md:p-12 rounded-3xl shadow-2xl overflow-hidden text-center">
                 <div class="max-w-3xl mx-auto space-y-4">
                     <span class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full uppercase border border-emerald-500/30">Plataforma Oficial DMO</span>
                     <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight text-white">Descubre y Explora Colombia con Inteligencia</h2>
                     <p class="text-slate-300 text-sm md:text-base">Planifica rutas óptimas, calcula costos de transporte en carro, moto o a pie, y viaja de manera sostenible con aforos en tiempo real.</p>
-                    <div class="pt-4 flex justify-center gap-4">
+                    <div id="hero-botones-auth" class="pt-4 flex justify-center gap-4">
                         <button onclick="abrirModalAuth('login')" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl text-sm transition shadow-lg">Iniciar Sesión</button>
                         <button onclick="abrirModalAuth('registro')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 rounded-xl text-sm transition shadow-lg">Registrarse Gratis</button>
                     </div>
@@ -95,9 +95,9 @@
                 </div>
             </div>
 
-            <!-- Catálogo General de Destinos con Mapa -->
+            <!-- Catálogo General de Destinos con Vista de Mapas -->
             <div class="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                <h3 class="text-base font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-landmark text-emerald-400"></i> Destinos Emblemáticos y Estado de Aforo</h3>
+                <h3 class="text-base font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-landmark text-emerald-400"></i> Destinos Emblemáticos y Conexión Maps</h3>
                 <div id="destinos-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
             </div>
         </div>
@@ -224,6 +224,8 @@
 
         function renderNavbar() {
             const nav = document.getElementById('navbar-auth-section');
+            const heroBotones = document.getElementById('hero-botones-auth');
+
             if (usuarioActual) {
                 nav.innerHTML = `
                     <span class="text-xs text-slate-300 hidden md:inline">👤 <b>${usuarioActual.nombre}</b> (<span class="text-blue-400 uppercase">${usuarioActual.rol}</span>)</span>
@@ -231,11 +233,13 @@
                         <i class="fa-solid fa-right-from-bracket mr-1"></i> Salir
                     </button>
                 `;
+                if(heroBotones) heroBotones.classList.add('hidden'); // Oculta los botones de registro si ya está logueado
             } else {
                 nav.innerHTML = `
                     <button onclick="abrirModalAuth('login')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-medium transition border border-slate-700">Iniciar Sesión</button>
                     <button onclick="abrirModalAuth('registro')" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-medium transition shadow">Registrarse</button>
                 `;
+                if(heroBotones) heroBotones.classList.remove('hidden');
             }
         }
 
@@ -363,19 +367,31 @@
                 let hospedajesHtml = d.hospedajes.map(h => `<li class="text-xs text-slate-300"><i class="fa-solid fa-bed text-blue-400 mr-1"></i> ${h.nombre_hospedaje} - <span class="text-emerald-400">${h.precio_noche}</span></li>`).join('');
 
                 grid.innerHTML += `
-                    <div class="bg-slate-950 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between space-y-3 shadow-lg">
-                        <div>
-                            <span class="text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-slate-900 text-blue-400 border border-slate-800">${d.categoria}</span>
-                            <h4 class="font-bold text-base text-white mt-2">${d.nombre}</h4>
-                            <p class="text-xs text-slate-400 mt-1">${d.descripcion}</p>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-slate-300 mb-1"><i class="fa-solid fa-hotel mr-1"></i> Hospedajes recomendados:</p>
-                            <ul class="space-y-1 bg-slate-900/50 p-2 rounded-xl border border-slate-800">${hospedajesHtml}</ul>
-                        </div>
-                        <div class="pt-3 border-t border-slate-800 flex justify-between items-center text-xs">
-                            <span class="text-slate-300">Aforo: <b>${porcentaje}%</b></span>
-                            <a href="https://www.google.com/maps/search/?api=1&query=${d.latitud},${d.longitud}" target="_blank" class="text-blue-400 hover:underline font-medium"><i class="fa-solid fa-map-location-dot mr-1"></i> Ver en Maps</a>
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xl">
+                        <!-- Miniatura de Mapa con Enlace Directo a Google Maps -->
+                        <a href="https://www.google.com/maps/search/?api=1&query=${d.latitud},${d.longitud}" target="_blank" class="relative group block h-36 bg-slate-900 overflow-hidden border-b border-slate-800">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-10"></div>
+                            <div class="absolute inset-0 flex items-center justify-center bg-blue-950/30 group-hover:bg-blue-900/40 transition">
+                                <div class="text-center">
+                                    <i class="fa-solid fa-map-location-dot text-emerald-400 text-3xl mb-1 group-hover:scale-110 transition duration-300"></i>
+                                    <p class="text-[11px] text-slate-200 font-bold bg-slate-900/80 px-2 py-0.5 rounded-full border border-slate-700">Abrir en Google Maps</p>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-slate-900 text-blue-400 border border-slate-800">${d.categoria}</span>
+                                <h4 class="font-bold text-base text-white mt-2">${d.nombre}</h4>
+                                <p class="text-xs text-slate-400 mt-1">${d.descripcion}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-300 mb-1"><i class="fa-solid fa-hotel mr-1"></i> Hospedajes recomendados:</p>
+                                <ul class="space-y-1 bg-slate-900/50 p-2 rounded-xl border border-slate-800">${hospedajesHtml}</ul>
+                            </div>
+                            <div class="pt-3 border-t border-slate-800 flex justify-between items-center text-xs">
+                                <span class="text-slate-300">Aforo: <b>${porcentaje}%</b></span>
+                                <a href="https://www.google.com/maps/search/?api=1&query=${d.latitud},${d.longitud}" target="_blank" class="text-blue-400 hover:underline font-medium"><i class="fa-solid fa-map-location-dot mr-1"></i> Ruta Maps</a>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -446,7 +462,7 @@
                             <td class="p-3 uppercase text-blue-400 font-bold">${u.rol}</td>
                             <td class="p-3"><span class="px-2 py-1 rounded text-[10px] ${u.estado_aprobacion === 'pendiente' ? 'bg-amber-500/20 text-amber-400 font-bold' : 'bg-emerald-500/20 text-emerald-400'}">${u.estado_aprobacion}</span></td>
                             <td class="p-3 space-x-2">
-                                ${u.estado_apropacion === 'pendiente' ? `<button onclick="cambiarEstadoUsuario(${u.id_usuario}, 'admin', 'aprobado')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs">Aprobar</button>` : ''}
+                                ${u.estado_aprobacion === 'pendiente' ? `<button onclick="cambiarEstadoUsuario(${u.id_usuario}, 'admin', 'aprobado')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs">Aprobar</button>` : ''}
                                 <button onclick="cambiarEstadoUsuario(${u.id_usuario}, 'turista', 'aprobado')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded text-xs">Cambiar a Turista</button>
                             </td>
                         </tr>
