@@ -160,6 +160,7 @@ db.serialize(async () => {
                 ['col05', 'Finca Hotel Cafetera Salento', 'Finca Tradicional', '$115.000'],
                 ['col05', 'Hostal Los Girasoles Salento', 'Hostal', '$40.000'],
                 ['col06', 'Hotel Movich Intercontinental Cali', 'Hotel 4 Estrellas', '$160.000']
+                ['col07', 'San José de Suaita', 'Santander: Historia industrial panelera, cascada de Los Caballeros y cañones.', 'historia', 1500, 600, 8000, 32000, 380000, 6.5056, -73.4736, 'Seguro']
             ];
             const stmtH = db.prepare("INSERT INTO hospedajes (id_destino, nombre_hospedaje, tipo, precio_noche) VALUES (?, ?, ?, ?)");
             hospedajes.forEach(h => stmtH.run(h));
@@ -219,7 +220,7 @@ app.post('/api/auth/registro', async (req, res) => {
         }
     });
 });
-
+-
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
     

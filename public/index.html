@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen">
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen relative">
 
     <!-- NAVBAR SUPERIOR -->
     <header class="bg-slate-900/85 backdrop-blur border-b border-slate-800 p-4 sticky top-0 z-50 shadow">
@@ -16,24 +16,20 @@
                 <i class="fa-solid fa-mountain-sun text-emerald-400 text-2xl"></i>
                 <h1 class="text-lg font-bold tracking-wide">Turismo Inteligente <span class="text-xs text-blue-400 font-normal">Colombia</span></h1>
             </div>
-            
-            <div id="navbar-auth-section" class="flex items-center space-x-3">
-                <!-- Se llena dinámicamente -->
-            </div>
+            <div id="navbar-auth-section" class="flex items-center space-x-3"></div>
         </div>
     </header>
 
     <!-- CONTENEDOR PRINCIPAL -->
     <main class="max-w-7xl mx-auto p-4 space-y-8 my-6">
 
-        <!-- ================= VISTA PÚBLICA (LANDING PAGE / PREVENTA) ================= -->
+        <!-- VISTA PÚBLICA -->
         <div id="vista-publica" class="space-y-12">
-            <!-- Hero Section Dinámico (Oculta botones si ya hay sesión) -->
             <div id="hero-banner-auth" class="relative bg-gradient-to-r from-blue-900/40 via-slate-900 to-emerald-900/40 border border-slate-800 p-8 md:p-12 rounded-3xl shadow-2xl overflow-hidden text-center">
                 <div class="max-w-3xl mx-auto space-y-4">
-                    <span class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full uppercase border border-emerald-500/30">Plataforma Oficial DMO</span>
+                    <span class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full uppercase border border-emerald-500/30">Plataforma Oficial DMO & Soporte</span>
                     <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight text-white">Descubre y Explora Colombia con Inteligencia</h2>
-                    <p class="text-slate-300 text-sm md:text-base">Planifica rutas óptimas, calcula costos de transporte en carro, moto o a pie, y viaja de manera sostenible con aforos en tiempo real.</p>
+                    <p class="text-slate-300 text-sm md:text-base">Planifica rutas óptimas, calcula costos de transporte, aforos en tiempo real y guías de viaje inteligentes.</p>
                     <div id="hero-botones-auth" class="pt-4 flex justify-center gap-4">
                         <button onclick="abrirModalAuth('login')" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl text-sm transition shadow-lg">Iniciar Sesión</button>
                         <button onclick="abrirModalAuth('registro')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 rounded-xl text-sm transition shadow-lg">Registrarse Gratis</button>
@@ -41,178 +37,188 @@
                 </div>
             </div>
 
-            <!-- Sección de Exploración y Cotizador Público -->
+            <!-- Cotizador Avanzado con Ruta de Llegada -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Planificador Público -->
                 <div class="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
                     <h3 class="text-base font-bold mb-2 text-blue-300"><i class="fa-solid fa-compass mr-2"></i> Planificador de Rutas Interactivo</h3>
-                    <p class="text-xs text-slate-400 mb-4">Selecciona tu categoría turística para obtener recomendaciones oficiales:</p>
+                    <p class="text-xs text-slate-400 mb-4">Selecciona tu categoría turística:</p>
                     <div class="flex gap-3 mb-4">
-                        <select id="turista-pref" class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white flex-1 focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="historia">Historia y Santuarios (Bogotá)</option>
-                            <option value="aventura">Aventura y Paisajes (Antioquia)</option>
-                            <option value="naturaleza">Naturaleza y Parques (Eje Cafetero)</option>
-                            <option value="cultura">Cultura y Monumentos (Cali)</option>
+                        <select id="turista-pref" class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white flex-1 outline-none">
+                            <option value="historia">Historia y Patrimonio (Bogotá / San José de Suaita)</option>
+                            <option value="aventura">Aventura y Paisajes (Antioquia / Boyacá)</option>
+                            <option value="naturaleza">Naturaleza y Parques (Tayrona / Eje Cafetero)</option>
                         </select>
-                        <button onclick="buscarRecomendacion()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-sm font-medium transition shadow">Buscar Ruta</button>
+                        <button onclick="buscarRecomendacion()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-sm font-medium transition shadow">Buscar</button>
                     </div>
                     <div id="resultado-rec" class="hidden bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs space-y-2"></div>
                 </div>
 
-                <!-- Cotizador Público de Viaje -->
+                <!-- Cotizador con Ruta de Llegada desde ubicación actual -->
                 <div class="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                    <h3 class="text-base font-bold mb-2 text-emerald-400"><i class="fa-solid fa-calculator mr-2"></i> Cotizador de Estancia & Movilidad</h3>
-                    <p class="text-xs text-slate-400 mb-4">Calcula tu presupuesto en pesos colombianos (COP) adaptado a tu transporte:</p>
+                    <h3 class="text-base font-bold mb-2 text-emerald-400"><i class="fa-solid fa-calculator mr-2"></i> Cotizador & Ruta de Llegada</h3>
+                    <p class="text-xs text-slate-400 mb-4">Calcula presupuesto y ruta según tu ciudad actual:</p>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                         <div>
-                            <label class="block text-[11px] text-slate-400 mb-1">Destino:</label>
+                            <label class="block text-[11px] text-slate-400 mb-1">Tu Ciudad de Origen:</label>
+                            <input type="text" id="cotiza-origen" value="Bogotá D.C." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">Destino Turístico:</label>
                             <select id="cotiza-destino" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white">
                                 <option value="Cerro de Monserrate">Cerro de Monserrate</option>
+                                <option value="San José de Suaita">San José de Suaita (Santander)</option>
                                 <option value="Piedra del Peñol y Guatapé">Guatapé y El Peñol</option>
                                 <option value="Valle del Cocora y Salento">Valle del Cocora</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[11px] text-slate-400 mb-1">Modo de Transporte:</label>
+                            <label class="block text-[11px] text-slate-400 mb-1">Transporte:</label>
                             <select id="cotiza-transporte" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white">
-                                <option value="Carro">Carro (Particular / Taxi)</option>
+                                <option value="Carro">Carro Particular</option>
                                 <option value="Moto">Moto</option>
-                                <option value="A pie">A pie / Senderismo</option>
+                                <option value="Bus / Público">Transporte Público / Bus</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-[11px] text-slate-400 mb-1">Personas:</label>
-                            <input type="number" id="cotiza-personas" min="1" value="2" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white">
-                        </div>
-                        <div>
-                            <label class="block text-[11px] text-slate-400 mb-1">Días:</label>
-                            <input type="number" id="cotiza-dias" min="1" value="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">Personas:</label>
+                                <input type="number" id="cotiza-personas" min="1" value="2" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">Días:</label>
+                                <input type="number" id="cotiza-dias" min="1" value="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white">
+                            </div>
                         </div>
                     </div>
-                    <button onclick="cotizarViaje()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl text-sm transition shadow">Cotizar Ahora</button>
-                    <div id="resultado-cotiza" class="mt-3 hidden bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-emerald-300 text-center font-bold"></div>
+                    <button onclick="cotizarViajeConRuta()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl text-sm transition shadow">Calcular Costo & Ruta de Viaje</button>
+                    <div id="resultado-cotiza" class="mt-3 hidden bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-200 space-y-2"></div>
                 </div>
             </div>
 
-            <!-- Catálogo General de Destinos con Vista de Mapas -->
+            <!-- Catálogo de Destinos (Incluye San José de Suaita) -->
             <div class="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                <h3 class="text-base font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-landmark text-emerald-400"></i> Destinos Emblemáticos y Conexión Maps</h3>
+                <h3 class="text-base font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-landmark text-emerald-400"></i> Catálogo de Destinos Emblemáticos & Conexión Maps</h3>
                 <div id="destinos-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
             </div>
         </div>
 
-        <!-- ================= VISTA PRIVADA (DASHBOARD POR ROLES) ================= -->
+        <!-- VISTA PRIVADA -->
         <div id="vista-privada" class="space-y-6 hidden">
-            <!-- Header del Dashboard -->
             <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 id="dash-bienvenida" class="text-xl font-extrabold text-white">Bienvenido</h2>
                     <p class="text-xs text-slate-400 mt-1">Panel operativo seguro bajo normativas ISO 27001. Rol activo: <span id="dash-rol" class="uppercase font-bold text-blue-400"></span></p>
                 </div>
-                <div class="flex gap-2">
+                <div>
                     <button onclick="irAlCatalogoGeneral()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-medium border border-slate-700 transition">Ver Catálogo General</button>
                 </div>
             </div>
 
-            <!-- Panel Operativo Admin / Super Admin -->
             <div id="panel-admin-section" class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl hidden">
-                <h3 class="text-base font-bold mb-3 text-purple-400"><i class="fa-solid fa-sliders mr-2"></i> Panel de Gestión DMO & Aforos</h3>
+                <h3 class="text-base font-bold mb-3 text-purple-400"><i class="fa-solid fa-sliders mr-2"></i> Gestión DMO & Aforos</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                     <div>
-                        <label class="block text-xs text-slate-400 mb-1">Seleccionar Destino:</label>
+                        <label class="block text-xs text-slate-400 mb-1">Destino:</label>
                         <select id="select-dest" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white"></select>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 mb-1">Nueva Afluencia Actual:</label>
-                        <input type="number" id="input-afluencia" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white" placeholder="Ej. 1900">
+                        <label class="block text-xs text-slate-400 mb-1">Nueva Afluencia:</label>
+                        <input type="number" id="input-afluencia" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white">
                     </div>
-                    <button onclick="actualizarAforo()" class="bg-purple-600 hover:bg-purple-500 text-white py-2.5 px-4 rounded-xl text-sm font-medium transition shadow">Actualizar Aforo en BD</button>
+                    <button onclick="actualizarAforo()" class="bg-purple-600 hover:bg-purple-500 text-white py-2.5 px-4 rounded-xl text-sm font-medium transition">Actualizar Aforo</button>
                 </div>
             </div>
 
-            <!-- Panel Exclusivo Super Admin: Aprobación de Admins -->
             <div id="panel-superadmin-section" class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl hidden">
-                <h3 class="text-base font-bold mb-3 text-amber-400"><i class="fa-solid fa-users-gear mr-2"></i> Gestión y Solicitudes de Administradores</h3>
+                <h3 class="text-base font-bold mb-3 text-amber-400"><i class="fa-solid fa-users-gear mr-2"></i> Solicitudes de Administradores</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs text-slate-300">
                         <thead class="bg-slate-950 text-slate-400 uppercase">
-                            <tr>
-                                <th class="p-3">Nombre</th>
-                                <th class="p-3">Correo</th>
-                                <th class="p-3">Rol</th>
-                                <th class="p-3">Estado</th>
-                                <th class="p-3">Acciones</th>
-                            </tr>
+                            <tr><th class="p-3">Nombre</th><th class="p-3">Correo</th><th class="p-3">Rol</th><th class="p-3">Estado</th><th class="p-3">Acciones</th></tr>
                         </thead>
                         <tbody id="tabla-usuarios-body"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Panel de Auditoría ISO 27001 (Auditor / Super Admin) -->
             <div id="panel-auditor-section" class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl hidden">
-                <h3 class="text-base font-bold mb-3 text-emerald-400"><i class="fa-solid fa-shield-halved mr-2"></i> Bitácora de Auditoría y Seguridad</h3>
+                <h3 class="text-base font-bold mb-3 text-emerald-400"><i class="fa-solid fa-shield-halved mr-2"></i> Auditoría ISO 27001</h3>
                 <div id="logs-container" class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-[11px] max-h-56 overflow-y-auto space-y-1 font-mono text-slate-300"></div>
             </div>
         </div>
-
     </main>
+
+    <!-- CHATBOT DE SOPORTE FLOTANTE -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <button onclick="toggleChatbot()" class="bg-emerald-600 hover:bg-emerald-500 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl transition transform hover:scale-105">
+            <i class="fa-solid fa-headset"></i>
+        </button>
+        <div id="chatbot-box" class="hidden absolute bottom-16 right-0 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-96">
+            <div class="bg-slate-950 p-3 border-b border-slate-800 flex justify-between items-center">
+                <span class="text-xs font-bold text-emerald-400"><i class="fa-solid fa-robot mr-1"></i> Asistente SmartCampus & Soporte</span>
+                <button onclick="toggleChatbot()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="chat-messages" class="flex-1 p-3 overflow-y-auto space-y-2 text-xs text-slate-300">
+                <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">¡Hola! Soy tu asistente virtual de Turismo Inteligente. ¿En qué puedo ayudarte con tu viaje, reservas o códigos de acceso?</div>
+            </div>
+            <div class="p-3 bg-slate-950 border-t border-slate-800 flex gap-2">
+                <input type="text" id="chat-input" placeholder="Escribe tu consulta..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                <button onclick="enviarMensajeChat()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL AUTENTICACIÓN -->
     <div id="auth-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
         <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl max-w-md w-full mx-4 relative">
             <button onclick="cerrarModalAuth()" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-            
             <div class="text-center mb-6">
                 <i class="fa-solid fa-mountain-sun text-emerald-400 text-4xl mb-2"></i>
                 <h2 id="modal-titulo" class="text-2xl font-bold text-white">Iniciar Sesión</h2>
             </div>
-
             <div class="flex border-b border-slate-800 mb-6">
                 <button onclick="cambiarTabModal('login')" id="tab-login-btn" class="flex-1 pb-2 font-bold text-sm text-blue-400 border-b-2 border-blue-500">Iniciar Sesión</button>
                 <button onclick="cambiarTabModal('registro')" id="tab-registro-btn" class="flex-1 pb-2 font-medium text-sm text-slate-400">Registrarse</button>
             </div>
-
             <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Correo Electrónico:</label>
-                    <input type="email" id="login-email" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white" placeholder="ejemplo@correo.com">
+                    <input type="email" id="login-email" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white">
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Contraseña:</label>
-                    <input type="password" id="login-pass" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white" placeholder="••••••••">
+                    <input type="password" id="login-pass" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white">
                 </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl text-sm transition shadow">Ingresar al Sistema</button>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl text-sm transition">Ingresar</button>
                 <div class="text-center mt-3"><button type="button" onclick="recuperarPasswordPrompt()" class="text-xs text-blue-400 hover:underline">¿Olvidaste tu contraseña?</button></div>
             </form>
-
             <form id="form-registro" onsubmit="handleRegistro(event)" class="space-y-4 hidden">
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">Nombre Completo:</label>
-                    <input type="text" id="reg-nombre" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white" placeholder="Tu Nombre">
+                    <label class="block text-xs text-slate-400 mb-1">Nombre:</label>
+                    <input type="text" id="reg-nombre" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white">
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">Correo Electrónico:</label>
-                    <input type="email" id="reg-email" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white" placeholder="ejemplo@correo.com">
+                    <label class="block text-xs text-slate-400 mb-1">Correo:</label>
+                    <input type="email" id="reg-email" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white">
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">Contraseña (Mín. 8 caracteres, mayús, minús, número y símbolo):</label>
-                    <input type="password" id="reg-pass" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white" placeholder="••••••••">
+                    <label class="block text-xs text-slate-400 mb-1">Contraseña (Mayús, minús, núm, símbolo):</label>
+                    <input type="password" id="reg-pass" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white">
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">Seleccionar Rol:</label>
+                    <label class="block text-xs text-slate-400 mb-1">Rol:</label>
                     <select id="reg-rol" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white">
-                        <option value="turista">Turista (Acceso estándar)</option>
-                        <option value="admin">Administrador (Requiere aprobación del Super Admin)</option>
+                        <option value="turista">Turista</option>
+                        <option value="admin">Administrador (Requiere aprobación)</option>
                     </select>
                 </div>
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-xl text-sm transition shadow">Crear Cuenta</button>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-xl text-sm transition">Crear Cuenta</button>
             </form>
         </div>
     </div>
 
-    <!-- SCRIPTS DE CONTROL -->
+    <!-- SCRIPTS -->
     <script>
         let usuarioActual = JSON.parse(localStorage.getItem('usuarioTurismo')) || null;
 
@@ -222,22 +228,44 @@
             cargarDestinos();
         });
 
+        function toggleChatbot() {
+            const box = document.getElementById('chatbot-box');
+            box.classList.toggle('hidden');
+        }
+
+        function enviarMensajeChat() {
+            const input = document.getElementById('chat-input');
+            const texto = input.value.trim();
+            if(!texto) return;
+            const msgs = document.getElementById('chat-messages');
+            msgs.innerHTML += `<div class="bg-blue-950/60 p-2.5 rounded-xl border border-blue-900 text-right"><b>Tú:</b> ${texto}</div>`;
+            input.value = '';
+            
+            setTimeout(() => {
+                let respuesta = "Gracias por contactar soporte. Para recuperar credenciales, usa la opción de acceso. Para aprobación de cuentas, verifica que tu Super Admin reciba el correo de Make.";
+                if(texto.toLowerCase().includes('suaita') || texto.toLowerCase().includes('san jose')) {
+                    respuesta = "¡San José de Suaita es hermoso! Cuenta con la cascada de Los Caballeros y un gran patrimonio histórico panelero.";
+                } else if(texto.toLowerCase().includes('cotiza') || texto.toLowerCase().includes('precio')) {
+                    respuesta = "Puedes usar nuestro Cotizador Inteligente en la página principal ingresando tu origen y el destino de preferencia.";
+                }
+                msgs.innerHTML += `<div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800"><b>Soporte DMO:</b> ${respuesta}</div>`;
+                msgs.scrollTop = msgs.scrollHeight;
+            }, 600);
+        }
+
         function renderNavbar() {
             const nav = document.getElementById('navbar-auth-section');
             const heroBotones = document.getElementById('hero-botones-auth');
-
             if (usuarioActual) {
                 nav.innerHTML = `
                     <span class="text-xs text-slate-300 hidden md:inline">👤 <b>${usuarioActual.nombre}</b> (<span class="text-blue-400 uppercase">${usuarioActual.rol}</span>)</span>
-                    <button onclick="cerrarSesion()" class="bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white px-3.5 py-2 rounded-xl text-xs font-medium transition">
-                        <i class="fa-solid fa-right-from-bracket mr-1"></i> Salir
-                    </button>
+                    <button onclick="cerrarSesion()" class="bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white px-3 py-2 rounded-xl text-xs">Salir</button>
                 `;
-                if(heroBotones) heroBotones.classList.add('hidden'); // Oculta los botones de registro si ya está logueado
+                if(heroBotones) heroBotones.classList.add('hidden');
             } else {
                 nav.innerHTML = `
-                    <button onclick="abrirModalAuth('login')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-medium transition border border-slate-700">Iniciar Sesión</button>
-                    <button onclick="abrirModalAuth('registro')" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-medium transition shadow">Registrarse</button>
+                    <button onclick="abrirModalAuth('login')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs border border-slate-700">Iniciar Sesión</button>
+                    <button onclick="abrirModalAuth('registro')" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs shadow">Registrarse</button>
                 `;
                 if(heroBotones) heroBotones.classList.remove('hidden');
             }
@@ -256,9 +284,7 @@
                 document.getElementById('dash-bienvenida').innerText = `Panel de Control: ${usuarioActual.nombre}`;
                 document.getElementById('dash-rol').innerText = usuarioActual.rol;
 
-                if (usuarioActual.rol === 'admin' || usuarioActual.rol === 'super_admin') {
-                    panelAdmin.classList.remove('hidden');
-                }
+                if (usuarioActual.rol === 'admin' || usuarioActual.rol === 'super_admin') panelAdmin.classList.remove('hidden');
                 if (usuarioActual.rol === 'super_admin') {
                     panelSuperAdmin.classList.remove('hidden');
                     cargarUsuariosSuperAdmin();
@@ -281,26 +307,15 @@
             }
         }
 
-        function abrirModalAuth(tipo) {
-            document.getElementById('auth-modal').classList.remove('hidden');
-            cambiarTabModal(tipo);
-        }
-
-        function cerrarModalAuth() {
-            document.getElementById('auth-modal').classList.add('hidden');
-        }
-
+        function abrirModalAuth(tipo) { document.getElementById('auth-modal').classList.remove('hidden'); cambiarTabModal(tipo); }
+        function cerrarModalAuth() { document.getElementById('auth-modal').classList.add('hidden'); }
         function cambiarTabModal(tab) {
             if (tab === 'login') {
                 document.getElementById('form-login').classList.remove('hidden');
                 document.getElementById('form-registro').classList.add('hidden');
-                document.getElementById('tab-login-btn').className = "flex-1 pb-2 font-bold text-sm text-blue-400 border-b-2 border-blue-500";
-                document.getElementById('tab-registro-btn').className = "flex-1 pb-2 font-medium text-sm text-slate-400";
             } else {
                 document.getElementById('form-login').classList.add('hidden');
                 document.getElementById('form-registro').classList.remove('hidden');
-                document.getElementById('tab-registro-btn').className = "flex-1 pb-2 font-bold text-sm text-emerald-400 border-b-2 border-emerald-500";
-                document.getElementById('tab-login-btn').className = "flex-1 pb-2 font-medium text-sm text-slate-400";
             }
         }
 
@@ -315,12 +330,8 @@
             if (data.success) {
                 usuarioActual = data.usuario;
                 localStorage.setItem('usuarioTurismo', JSON.stringify(usuarioActual));
-                cerrarModalAuth();
-                renderNavbar();
-                controlarVistas();
-            } else {
-                alert(data.error);
-            }
+                cerrarModalAuth(); renderNavbar(); controlarVistas();
+            } else { alert(data.error); }
         }
 
         async function handleRegistro(e) {
@@ -329,27 +340,16 @@
             const res = await fetch('/api/auth/registro', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    nombre: document.getElementById('reg-nombre').value, 
-                    email: document.getElementById('reg-email').value, 
-                    password: document.getElementById('reg-pass').value, 
-                    rolSolicitado 
-                })
+                body: JSON.stringify({ nombre: document.getElementById('reg-nombre').value, email: document.getElementById('reg-email').value, password: document.getElementById('reg-pass').value, rolSolicitado })
             });
             const data = await res.json();
-            if (data.success) {
-                alert(data.message);
-                cambiarTabModal('login');
-            } else {
-                alert(data.error);
-            }
+            if (data.success) { alert(data.message); cambiarTabModal('login'); } else { alert(data.error); }
         }
 
         function cerrarSesion() {
             usuarioActual = null;
             localStorage.removeItem('usuarioTurismo');
-            renderNavbar();
-            controlarVistas();
+            renderNavbar(); controlarVistas();
             window.scrollTo({top:0, behavior:'smooth'});
         }
 
@@ -358,9 +358,7 @@
             const destinos = await res.json();
             const grid = document.getElementById('destinos-grid');
             const select = document.getElementById('select-dest');
-            
-            grid.innerHTML = ''; 
-            if(select) select.innerHTML = '';
+            grid.innerHTML = ''; if(select) select.innerHTML = '';
 
             destinos.forEach(d => {
                 const porcentaje = Math.round((d.afluencia_actual / d.capacidad_carga_fisica) * 100);
@@ -368,13 +366,11 @@
 
                 grid.innerHTML += `
                     <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xl">
-                        <!-- Miniatura de Mapa con Enlace Directo a Google Maps -->
                         <a href="https://www.google.com/maps/search/?api=1&query=${d.latitud},${d.longitud}" target="_blank" class="relative group block h-36 bg-slate-900 overflow-hidden border-b border-slate-800">
-                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-10"></div>
                             <div class="absolute inset-0 flex items-center justify-center bg-blue-950/30 group-hover:bg-blue-900/40 transition">
                                 <div class="text-center">
-                                    <i class="fa-solid fa-map-location-dot text-emerald-400 text-3xl mb-1 group-hover:scale-110 transition duration-300"></i>
-                                    <p class="text-[11px] text-slate-200 font-bold bg-slate-900/80 px-2 py-0.5 rounded-full border border-slate-700">Abrir en Google Maps</p>
+                                    <i class="fa-solid fa-map-location-dot text-emerald-400 text-3xl mb-1 group-hover:scale-110 transition"></i>
+                                    <p class="text-[11px] text-slate-200 font-bold bg-slate-900/80 px-2 py-0.5 rounded-full border border-slate-700">Ver en Google Maps</p>
                                 </div>
                             </div>
                         </a>
@@ -385,7 +381,7 @@
                                 <p class="text-xs text-slate-400 mt-1">${d.descripcion}</p>
                             </div>
                             <div>
-                                <p class="text-xs font-bold text-slate-300 mb-1"><i class="fa-solid fa-hotel mr-1"></i> Hospedajes recomendados:</p>
+                                <p class="text-xs font-bold text-slate-300 mb-1"><i class="fa-solid fa-hotel mr-1"></i> Hospedajes:</p>
                                 <ul class="space-y-1 bg-slate-900/50 p-2 rounded-xl border border-slate-800">${hospedajesHtml}</ul>
                             </div>
                             <div class="pt-3 border-t border-slate-800 flex justify-between items-center text-xs">
@@ -417,7 +413,8 @@
             `;
         }
 
-        async function cotizarViaje() {
+        async function cotizarViajeConRuta() {
+            const origen = document.getElementById('cotiza-origen').value;
             const destinoNombre = document.getElementById('cotiza-destino').value;
             const personas = document.getElementById('cotiza-personas').value;
             const dias = document.getElementById('cotiza-dias').value;
@@ -431,7 +428,21 @@
             const data = await res.json();
             const boxCotiza = document.getElementById('resultado-cotiza');
             boxCotiza.classList.remove('hidden');
-            boxCotiza.innerHTML = `Estimado para ${personas} persona(s) (${dias} días en ${modoTransporte}): <br><span class="text-base text-emerald-400">$${data.costoTotal.toLocaleString()} COP</span>`;
+            
+            // Generar enlace dinámico de Google Maps Directions (Ruta desde Origen hasta el Destino)
+            const urlRutaMaps = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destinoNombre + ", Colombia")}&travelmode=driving`;
+
+            boxCotiza.innerHTML = `
+                <div class="font-bold text-emerald-400 mb-1">Cotización Estimada: $${data.costoTotal.toLocaleString()} COP</div>
+                <div class="text-slate-300 text-[11px]">Para ${personas} persona(s) durante ${dias} día(s) en ${modoTransporte}.</div>
+                <div class="mt-2 pt-2 border-t border-slate-800">
+                    <span class="text-blue-400 font-bold"><i class="fa-solid fa-route mr-1"></i> Ruta de Llegada:</span> 
+                    Salida desde <b>${origen}</b> hacia <b>${destinoNombre}</b>.
+                    <div class="mt-2">
+                        <a href="${urlRutaMaps}" target="_blank" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium inline-block shadow">Ver Ruta Optimizada en Google Maps</a>
+                    </div>
+                </div>
+            `;
         }
 
         async function actualizarAforo() {
@@ -463,7 +474,7 @@
                             <td class="p-3"><span class="px-2 py-1 rounded text-[10px] ${u.estado_aprobacion === 'pendiente' ? 'bg-amber-500/20 text-amber-400 font-bold' : 'bg-emerald-500/20 text-emerald-400'}">${u.estado_aprobacion}</span></td>
                             <td class="p-3 space-x-2">
                                 ${u.estado_aprobacion === 'pendiente' ? `<button onclick="cambiarEstadoUsuario(${u.id_usuario}, 'admin', 'aprobado')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs">Aprobar</button>` : ''}
-                                <button onclick="cambiarEstadoUsuario(${u.id_usuario}, 'turista', 'aprobado')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded text-xs">Cambiar a Turista</button>
+                                <button onclick="cambiarEstadoUsuario(${u.id_usuario}, 'turista', 'aprobado')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded text-xs">A Turista</button>
                             </td>
                         </tr>
                     `;
